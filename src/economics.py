@@ -18,6 +18,9 @@ from scipy.stats import norm
 
 ROOT = Path(__file__).resolve().parents[1]
 CUTOFF = pd.Timestamp("2026-10-13")
+# October final is released October 23, after this snapshot. Observation-month
+# filtering alone would incorrectly admit that later release on a fresh run.
+LAST_FINAL_TARGET_MONTH = pd.Timestamp("2026-09-01")
 # Manually transcribed from the official page using the web-access tool on the
 # cutoff date. The directly downloaded historical CSV ends at September final.
 # This record is preliminary and never enters final-only forecast evaluation.
@@ -92,6 +95,15 @@ def parse_michigan(path: Path) -> pd.DataFrame:
     frame = pd.read_csv(path).dropna(how="all")
     frame["month"] = pd.to_datetime(frame["Month"] + " " + frame["YYYY"].astype(int).astype(str), format="%B %Y")
     return frame.drop(columns=["Month", "YYYY"]).set_index("month").sort_index()
+
+
+def eligible_final_targets(frame: pd.DataFrame) -> pd.DataFrame:
+    """Cap final outcomes at the latest final release known at this cutoff.
+
+    This excludes future-month final releases on a later re-download. It does
+    not claim to reconstruct revisions to the earlier historical targets.
+    """
+    return frame.loc[frame.index <= LAST_FINAL_TARGET_MONTH].copy()
 
 
 def model_matrix(frame: pd.DataFrame, features: list[str]) -> pd.DataFrame:

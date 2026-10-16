@@ -1,0 +1,14 @@
+# Final quality review — October 15 revision
+
+The economic information cutoff remains October 13, 2026. The separate provider comparison was collected retrospectively on October 15 and uses releases published in January–September.
+
+- The 12-page report, saved-output notebook, dashboard and ten-slide presentation share the revised evidence. Speaker notes contain 992 words, approximately 7.1 minutes at 140 words per minute.
+- The new vertical bar graph places providers on the x-axis and excess negative-headline share in percentage points on the y-axis. Six providers share six releases and 72 headlines. The final panel is selected from coverage only; the infeasible initial core and relevance refinements are documented in the protocol amendments.
+- All 72 primary comparison titles have a recorded AI relevance judgment. Raw titles remain available locally. Administrative suffix branding and a leading Watch prefix are removed before scoring; canonical duplicates are excluded. Fox News and Fox Business remain distinct.
+- An independent numerical implementation reproduces the event-equal, other-provider benchmark, including its zero-sum property. Release observation months and New York timing metadata are checked. The 95% ranges describe conditional month-resampling stability, not guaranteed population confidence or classifier accuracy.
+- Sensitivities include continuous negative probability, VADER, one title per provider/event, release family and event rather than month resampling. Some signs change. The plot is a content diagnostic, not a provider reputation or ideological ranking.
+- Exploratory stationarity and differenced-model checks preserve the original training pool and 44 test months. They do not establish reliable incremental media gains. Their two-test family is separate from the original primary three-test family.
+- The final-target cap excludes October's later final survey release from clean reproduction of the October 13 snapshot. The executed notebook checks input hashes and rejects stale inputs. A report sample-count figure no longer misclassifies framing variables as counts.
+- **45 tests passed.** All eight interactive dashboard charts rendered in a browser; the report has 12 pages and every PowerPoint shape lies inside its slide. The notebook executes without errors. Previous deliverables are archived locally.
+
+Material limits remain explicit: two independent human annotators are unavailable; new-provider classifier accuracy is unvalidated; corpus-wide factual calibration and respondent exposure are unavailable; feeds are selected and mutable; a few fixed release months limit generalization; causal national media effects are not identified. No missing validation or observations are invented. Raw and derived datasets and detailed review files are excluded from Git under the established submission policy.

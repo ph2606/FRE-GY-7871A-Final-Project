@@ -22,6 +22,7 @@ def save(fig, name):
 
 def build():
     plt.rcParams.update({'font.family': 'Calibri', 'font.size': 10,
+                         'pdf.fonttype':42,'ps.fonttype':42,
                          'axes.spines.top': False, 'axes.spines.right': False,
                          'axes.labelcolor': NAVY, 'text.color': NAVY,
                          'axes.titleweight': 'bold', 'grid.alpha': .16})
@@ -65,11 +66,42 @@ def build():
         ax.axhline(0, color=NAVY,lw=.7); ax.grid(axis='y'); ax.set_ylabel('Mean wording score')
         if tone: ax.legend(ncol=2,fontsize=9,frameon=False)
         save(fig, 'media_tone')
-        counts = [c for c in m if any(x in c for x in ['count','_n','n_','outlets']) and pd.api.types.is_numeric_dtype(m[c])]
+        counts = [c for c in ['item_count','source_count','group_count'] if c in m]
         fig, ax = plt.subplots(figsize=(9.4,2.9))
         for col in counts[:4]:
             ax.plot(m.month,m[col],label=col.replace('_',' '),lw=1.2)
         if counts: ax.legend(ncol=2,fontsize=9,frameon=False)
         ax.grid(axis='y'); ax.set_ylabel('Sample / source count')
         save(fig, 'media_coverage')
+    provider_path = TABLES / 'provider_bias.csv'
+    if provider_path.exists():
+        d=pd.read_csv(provider_path)
+        if 'comparison_status' in d:
+            d=d.loc[d.comparison_status.eq('main_common_event_panel')]
+        provider_bias_figure(d)
     print('Publication figures rebuilt.')
+
+
+def provider_bias_figure(data):
+    """Vertical provider bars: user-requested axes and explicit peer benchmark."""
+    data = data.sort_values('provider').reset_index(drop=True)
+    fig, ax = plt.subplots(figsize=(10.2,4.2))
+    x = np.arange(len(data))
+    ax.bar(x,data.bias_pp,color=NAVY,width=.62,zorder=3)
+    ax.vlines(x,data.lower_95,data.upper_95,color='#536977',lw=1.25,zorder=4)
+    ax.hlines(data.lower_95,x-.065,x+.065,color='#536977',lw=1.25,zorder=4)
+    ax.hlines(data.upper_95,x-.065,x+.065,color='#536977',lw=1.25,zorder=4)
+    ax.axhline(0,color='#657782',lw=1,zorder=2)
+    ax.set_xticks(x,labels=data.provider.str.replace(' ','\n'))
+    ax.set_xlabel('News provider',labelpad=8)
+    ax.set_ylabel('Relative negativity bias proxy\n(percentage points vs same-release peers)',labelpad=9)
+    ax.grid(axis='y',zorder=0)
+    ax.set_title('Economic headlines: same releases, different emphasis',loc='left',pad=28,fontsize=13)
+    ax.text(0,1.025,'Matched 2026 releases · 95% month-resampling ranges · zero = peer reference',
+            transform=ax.transAxes,fontsize=9,color='#536977')
+    lo = min(0,data.lower_95.min());hi=max(0,data.upper_95.max())
+    span = max(hi-lo,10)
+    ax.set_ylim(lo-.18*span,hi+.18*span)
+    for i,r in enumerate(data.itertuples()):
+        ax.text(i,lo-.10*span,f'n={int(r.n_titles)}',ha='center',va='center',fontsize=8.5,color='#536977')
+    save(fig,'provider_bias')

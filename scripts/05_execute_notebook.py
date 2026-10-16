@@ -20,5 +20,5 @@ errors = [o for c in notebook.cells if c.cell_type == 'code'
           for o in c.get('outputs', []) if o.output_type == 'error']
 assert not errors, errors
 nbformat.validate(notebook)
-nbformat.write(notebook, path)
+path.write_text(nbformat.writes(notebook), encoding='utf-8', newline='\n')
 print(f'Executed {sum(c.cell_type == "code" for c in notebook.cells)} code cells with {sys.executable}.')

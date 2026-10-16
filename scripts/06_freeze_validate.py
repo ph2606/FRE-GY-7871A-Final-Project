@@ -47,7 +47,7 @@ def environment_lock():
                '# For Linux/macOS regenerate platform-specific packages from requirements.txt.',
                '--extra-index-url https://download.pytorch.org/whl/cpu']
     content += [name + '==' + version for name,version in sorted(versions.items(),key=lambda x:x[0].lower())]
-    (ROOT / 'requirements-lock.txt').write_text('\n'.join(content)+'\n',encoding='utf-8')
+    (ROOT / 'requirements-lock.txt').write_text('\n'.join(content)+'\n',encoding='utf-8',newline='\n')
     return versions
 
 
@@ -66,6 +66,18 @@ def main():
     assert 6 <= words/140 <= 8, f'Narration duration {words/140:.2f} minutes'
     html = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
     assert 'Plotly.newPlot' in html and 'Human validation outstanding' in html
+    assert 'Provider bias proxy' in html and 'CNBC' in html and 'Fox News' in html
+    provider=pd.read_csv(OUT/'tables/provider_bias.csv')
+    if 'comparison_status' in provider:
+        provider=provider.loc[provider.comparison_status.eq('main_common_event_panel')]
+    assert {'CNBC','Fox News'}.issubset(set(provider.provider))
+    assert provider.n_events.nunique()==1 and provider.n_events.min()>=6
+    assert provider.n_titles.gt(0).all()
+    assert (provider.lower_95<=provider.upper_95).all()
+    assert abs(provider.bias_pp.sum())<1e-7, 'Common-release peer contrasts must center at zero'
+    assert (ROOT/'Provider_Bias_Comparison.png').exists()
+    panel=pd.read_csv(ROOT/'data/processed/monthly_dataset.csv')
+    assert panel.loc[panel.month>'2026-09-01','sentiment'].isna().all(), 'Final target published after cutoff'
     metrics = pd.read_csv(OUT/'tables/model_metrics.csv')
     common = metrics[(metrics['sample']=='common_media_oos')&(metrics.target=='sentiment')]
     assert common.n.nunique()==1 and common.start.nunique()==1 and common.end.nunique()==1
@@ -100,10 +112,12 @@ def main():
              f'- Media: {media_summary["n_titles"]:,} titles, {media_summary["months"]} months, {media_summary["complete_months"]} complete.',
              f'- Common media assessment: {summary["media_comparison"]["holdout_n"]} months.',
              '- Human-specific annotation requirement: **not satisfied**; AI diagnostics are separately identified.',
+             f'- Provider supplement: {len(provider)} providers and {int(provider.n_events.iloc[0])} identical releases; collected retrospectively for the October 15 revision.',
              '', '| Artifact / key input | SHA-256 |', '| --- | --- |']
     keys = ['data/processed/monthly_dataset.csv','data/processed/media_corpus.csv','data/processed/media_scores.csv',
             'data/processed/media_monthly.csv','outputs/tables/forecasts.csv','outputs/tables/model_metrics.csv',
             'outputs/tables/predictive_loss_tests.csv','docs/MEDIA_CODEBOOK.md',
+            'outputs/tables/provider_bias.csv','outputs/tables/provider_bias_summary.json','Provider_Bias_Comparison.png',
             'Panagiotis_Housos_Final_Project.pdf','Panagiotis_Housos_Final_Project.pptx','final_project.ipynb','dashboard.html']
     for name in keys:
         path = ROOT/name
@@ -111,11 +125,12 @@ def main():
     lines += ['',f'Observed interpreter: Python {platform.python_version()} on {platform.system()}; exact package closure in requirements-lock.txt.',
               'The latest Michigan historical targets are not historical survey vintages. Macro predictors use actual ALFRED snapshots; media tests remain retrospective pseudo-out-of-sample.',
               'Detailed AI annotations and claim checks are development diagnostics, not validated human ground truth.']
-    (ROOT/'SNAPSHOT.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+    (ROOT/'SNAPSHOT.md').write_text('\n'.join(lines)+'\n',encoding='utf-8',newline='\n')
     result = {'validated_at_utc':datetime.now(timezone.utc).isoformat(),'report_pages':pages,
               'notebook_code_cells':len(codes),'notebook_errors':0,'presentation_slides':len(prs.slides),
               'narration_words':words,'estimated_minutes_140wpm':words/140,
               'common_forecast_months':int(common.n.iloc[0]),'snapshot_manifest_sha256':digest,
+              'provider_comparison_n':len(provider),'common_provider_events':int(provider.n_events.iloc[0]),
               'human_requirement_satisfied':False,'platform':platform.platform(),
               'python':platform.python_version(),'package_count':len(versions)}
     (OUT/'deliverable_validation.json').write_text(json.dumps(result,indent=2),encoding='utf-8')

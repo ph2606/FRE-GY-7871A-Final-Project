@@ -2,7 +2,7 @@
 
 Panagiotis Housos | ph2606 | AI Applications in Finance | Fall 2026
 
-This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The information cutoff is **October 13, 2026**, America/New_York. Open [the executed notebook](final_project.ipynb) for the computed report and aggregate exhibits. The separate local deliverables are a 12-page LaTeX PDF, an interactive standalone dashboard, and a nine-slide PowerPoint with approximately 6–7 minutes of speaker notes.
+This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The economic information cutoff is **October 13, 2026**, America/New_York. The **October 15 revision** adds a separate provider comparison of January–September releases. Open [the executed notebook](final_project.ipynb) for the computed report and aggregate exhibits. The local deliverables are a 12-page LaTeX PDF, an interactive standalone dashboard, a standalone provider bar graph, and a ten-slide PowerPoint with approximately seven minutes of speaker notes.
 
 The main conclusion is that a large gap from the three-indicator economic model is sensitive to model dynamics and survey-method controls. Persistence is a demanding benchmark. Lagged media tone provides no robust incremental forecasting evidence in the common chronological assessment. This is an observational, retrospective content analysis; no causal national media effect or investment strategy is established. Exact computed metrics are preserved in the notebook and snapshot.
 
@@ -18,6 +18,8 @@ M1 uses U-3, headline PCE YoY and quarterly real GDP growth at an annualized rat
 
 The survey-mode ramp is known collection design, not a causal estimate of the mode effect. Michigan's 2026 methodological reports also show that low sentiment persists in consistent-mode comparisons. Party and demographic descriptions are published context; individual affiliation, exposure and beliefs are unavailable.
 
+The revision adds ADF/KPSS diagnostics and exploratory differenced/dynamic forecasts on the same 44 assessment months. These warn against a mechanical interpretation of persistent levels and do not establish reliable media gains. The new two-contrast family is separate from the three primary loss contrasts; HAC bandwidth checks are sensitivity analyses. The collector also explicitly caps final Michigan targets at September, preventing a later clean download from admitting October's post-cutoff final release. Earlier target revisions remain an acknowledged limitation.
+
 ## Media and annotation
 
 Google News RSS retrieves the same broad economic query for AP, Reuters, NPR, Gothamist, Texas Tribune and Colorado Sun. Hacker News Algolia supplies user-posted story titles. A fixed hash samples at most 12 titles per outlet-month. Coverage runs January 2020 through October 12, 2026; October is partial and excluded from outcome evaluation. Titles average within outlet, outlets within group, and groups into the monthly measure. Source counts, caps, geographic uncertainty, exclusions and coverage are retained.
@@ -27,6 +29,16 @@ This selected title panel measures content supply, not exposure. Ranked RSS caps
 The pinned CardiffNLP RoBERTa revision is `3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7`. Assets are hash-verified, no remote code runs, and it is not fine-tuned on project outcomes. VADER is the conventional comparison. The contextual model dates from 2022; measurements on earlier text therefore use a later representation. Literal frame/salience/attribution rules are provisional. Numeric claims are screened for verification, and a limited official-reference audit is distinct from corpus-wide factual validation. Political-name swaps and source-prefix tests diagnose sensitivity without proving bias. The codebook and model specifications are in [MEDIA_CODEBOOK.md](docs/MEDIA_CODEBOOK.md).
 
 No generative prompt produces the primary empirical score. The separate AI annotation instructions and method are disclosed in [AI_USE.md](AI_USE.md); detailed item-level labels remain local. Human validation runs on separately completed forms and never treats AI labels as human.
+
+## Provider bar graph
+
+The supplemental chart places **news providers on the x-axis** and a **relative negativity-bias proxy in percentage points on the y-axis**. CNBC, Fox News and Fox Business are separate publications. Query dates, official release events, neutral search terms, provider selection, scoring and uncertainty are recorded in [the final protocol](docs/PROVIDER_COMPARISON_PROTOCOL.md), with retrospective relevance and coverage refinements in [the amendments](docs/PROVIDER_PROTOCOL_AMENDMENT.md). The separate provider collection never changes the original monthly media series or forecasting results.
+
+Within each identical release event, average each provider's negative-headline classifications, then subtract the equal-weight mean of the other providers. Average those differences equally across the common releases. Positive means more negative classified wording than the selected same-release peers; zero is a peer reference, never objective neutrality. The final chart compares six providers over six common releases, with 72 headlines. The chart reports counts and conditional 95% calendar-month resampling stability ranges. Unsupported providers receive no comparable bar, rather than a zero. Continuous-probability, dictionary, event-bootstrap, one-title and release-family sensitivities are retained.
+
+The classifier has not been human-validated on the new provider sample. Truthful selection of different release components can change framing, while search selection and classification error lie outside the plotted intervals. With at most nine month clusters, precision and generalizability are limited. This is not a measure of ideological slant, false reporting, exposure or causal consumer impact. See [the interpretation and primary research](docs/provider_bias_interpretation.md).
+
+The primary supplement uses a documented AI title/date relevance review, plus mechanical exclusions for previews, unrelated metrics, market reactions and multi-topic roundups. Administrative branding and a leading Watch prefix are removed before scoring; raw titles are preserved. Detailed review decisions remain local at `data/annotations/provider_relevance_review.csv`. A fresh clone can acquire/score the automated candidates, but exact reproduction of this refinement requires the saved local review or a new documented review. It must not be represented as human validation or an untouched test. Sensitivities change some provider estimates and signs; the bars are not a provider-reputation ranking.
 
 ## Reproduce
 
@@ -42,9 +54,11 @@ $projectPython = '.\.venv\Scripts\python.exe'
 & $projectPython -m src.media acquire --start 2020-01-01 --end 2026-10-13
 & $projectPython -m src.media score
 & $projectPython -m src.annotation_packet
+& $projectPython -m src.provider_bias all
 
 # Recompute actual observations, test methods, build and execute deliverables.
 & $projectPython scripts/03_analyze.py
+& $projectPython -m src.dynamics
 & $projectPython -m pytest tests -q
 & $projectPython scripts/04_build_deliverables.py
 & $projectPython scripts/05_execute_notebook.py
@@ -73,6 +87,8 @@ Open local `dashboard.html` for interactive date zooming, series toggles and hov
 Future updates must preserve previous vintages, verify official calendars, use only information published by each origin, and rebuild every artifact. October 23 Michigan final and October 29 GDP/PCE releases are after this cutoff. Election proximity is context, not an identified treatment. [The causal design](docs/causal_design.md) details a prospective truthful-framing experiment, falsification and national transportability requirements; no participants were recruited.
 
 This submission intentionally freezes the October 13 snapshot. Advancing the monitoring period requires changing `CUTOFF` in `src/economics.py`, the origin range and cutoff-vintage calls in `scripts/01_collect_economics.py`, the monitoring target/preliminary-source record in `scripts/03_analyze.py`, the media acquisition `--end`, and cutoff/period descriptions in the dashboard and shared narrative. Verify and replace the preliminary record with the correctly dated official release; never carry October's 46.3 into a different month. Archive mutable Michigan/source-response caches before acquisition so the prior snapshot remains available. Then rerun the documented pipeline, validation and snapshot. Merely rerunning the frozen commands does not advance the study date.
+
+Also update `LAST_FINAL_TARGET_MONTH` only when the corresponding final survey release is available. The provider supplement's event registry/window are frozen independently. Rerunning the saved notebook checks its input hashes and stops on changed inputs; rebuild it after an intentional refresh so the narrative, calculated tables and saved figures stay consistent.
 
 The original AI review packet has 300 titles, of which 277 survive final relevance screening. The separate final human packet retains those 277 and supplements 23 eligible titles, yielding 300 final-corpus items in independently shuffled blank forms. The original AI labels and scores remain unchanged. Human and AI evaluations therefore have explicitly different eligible pools.
 

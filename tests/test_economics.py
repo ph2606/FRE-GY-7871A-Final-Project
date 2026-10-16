@@ -3,7 +3,16 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.economics import exact_growth, parse_alfred, rolling_forecasts, vintage_features
+from src.economics import exact_growth, parse_alfred, rolling_forecasts, vintage_features, eligible_final_targets
+
+
+def test_later_download_cannot_admit_october_final_at_october_13_cutoff():
+    frame = pd.DataFrame({'sentiment':[48.1,999.,888.],
+                          'current_conditions':[50.9,999.,888.]},
+                         index=pd.to_datetime(['2026-09-01','2026-10-01','2026-11-01']))
+    selected=eligible_final_targets(frame)
+    assert list(selected.index)==[pd.Timestamp('2026-09-01')]
+    assert selected.sentiment.iloc[0]==48.1
 
 
 def test_vintage_identity_rejects_wrong_date():

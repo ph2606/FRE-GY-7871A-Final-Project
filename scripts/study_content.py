@@ -101,6 +101,45 @@ def stability_text():
             "HAC standard errors cannot repair M1’s serial misspecification or structural breaks.")
 
 
+def provider_evidence():
+    data=csv('provider_bias.csv')
+    if 'comparison_status' in data:
+        data=data.loc[data.comparison_status.eq('main_common_event_panel')]
+    if data.empty:
+        raise FileNotFoundError('Run the provider comparison before building the revised submission.')
+    required={'CNBC','Fox News'}
+    assert required.issubset(set(data.provider)), 'CNBC and Fox News must have real, comparable observations.'
+    assert data.n_events.nunique()==1, 'Provider bars require an identical release set.'
+    return data
+
+
+def provider_caption():
+    d=provider_evidence()
+    s=load(T/'provider_bias_summary.json')
+    ids=s.get('common_event_ids',[])
+    mix=(f" The shared set contains {sum(str(x).startswith('employment_') for x in ids)} employment and "
+         f"{sum(str(x).startswith('cpi_') for x in ids)} CPI releases.") if ids else ''
+    return (f"Separate matched-release supplement: {len(d)} providers, {int(d.n_events.iloc[0])} identical releases and "
+            f"{int(d.n_titles.sum()):,} headlines.{mix} Bars are each provider’s negative-headline share minus its equal-weight "
+            "same-release peers, averaged across releases. Positive means relatively more negative wording; zero is a peer "
+            f"reference. n labels count headlines. The 95% stability ranges resample {int(d.n_month_clusters.iloc[0])} calendar-month clusters "
+            "and omit classification/retrieval uncertainty.")
+
+
+def dynamics_text():
+    s=load(T/'dynamics_summary.json')
+    if not s:
+        return 'Level persistence and structural breaks limit coefficient interpretation; differenced-model diagnostics are retained separately.'
+    diagnostics=s['historical_sentiment_diagnostics']
+    metrics={x['model']:x for x in s['metrics']}
+    q=max(x['bh_qvalue_within_bandwidth_family'] for x in s['dynamic_loss_tests_hac3'])
+    return (f"Historical sentiment has lag-one correlation {diagnostics['lag1_correlation']:.3f}; ADF p={diagnostics['adf_pvalue']:.3f} "
+            f"and KPSS p={diagnostics['kpss_pvalue_tabulated']:.3f} warn against interpreting persistent levels mechanically. "
+            "Breaks can mimic nonstationarity. In an exploratory differenced model with lagged sentiment change, adding media "
+            f"changes RMSE from {metrics['D_macro_AR']['rmse']:.4f} to {metrics['D_macro_AR_media']['rmse']:.4f}; "
+            f"the separate two-test family supplies no reliable improvement (BH q={q:.3f}). The primary tests remain unchanged.")
+
+
 def sections():
     e = evidence()
     latest = e['primary'].iloc[-1]
@@ -115,7 +154,7 @@ def sections():
     pages.append(('Question, evidence and practical result', [
         p('This project asks whether economic narratives help explain the divergence between the University of Michigan Index of Consumer Sentiment and headline economic conditions before the November 3, 2026 midterm elections. It separates household pressures, selective information or framing, and measurement or model inadequacy. Negative coverage and pessimistic consumers are not presumed biased.'),
         p(f"The first result is a measurement warning. The supplied workbook is not a release-vintage dataset, its latest PCE value does not match official headline inflation, and its Q3 GDP value precedes the official release. Official economic snapshots replace those values in the main analysis. For the latest completed-month economic forecast, observed sentiment is {fmt(latest.observed,1)}, the M1 prediction is {fmt(latest.prediction,1)}, and the gap is {fmt(latest.gap,1)} points. The mean 2026 assessment gap is {fmt(gap,1)} points. These residuals depend on the model."),
-        p(verdict(e) + ' Predictive improvement, if present, cannot distinguish information about genuine household pressure from biased framing, reverse causality or omitted shocks.'),
+        p(verdict(e) + ' Predictive improvement, if present, cannot distinguish genuine household pressure from framing, reverse causality or omitted shocks. A separate same-release provider comparison, including CNBC and Fox brands, is shown on page 11.'),
         table(['Evidence component','What is actually available'], [
             ['Economic baseline','Monthly data from 2010; historical ALFRED macro vintages; headline and survey components'],
             ['Content sample',f'{total_items:,} sampled titles across {len(media)} calendar months; national, local and Hacker News strata'],
@@ -154,7 +193,7 @@ def sections():
         p('The first alternative explanation is omitted economic pressure. Real disposable income growth and the cumulative 36-month PCE price increase add distinct information: current inflation measures the rate of change, while the accumulated increase measures the elevated price level. The controls are manageable and reproducible, but they do not exhaust housing affordability, consumer credit, inequality, regional shocks or job insecurity. A remaining residual can still reflect those omissions.'),
         p('The second alternative is survey measurement. Michigan’s announced web shares were 25%, 50%, 75% and 100% from April through July 2024. A ramp sensitivity reduces September’s gap to −3.99 points, while the autoregressive macro model yields −4.64 instead of M1’s −22.57. The ramp confounds every coincident post-transition change and cannot identify a causal mode effect. Michigan’s July 2026 report, revised September 4, also finds the 2026 low persists under consistent-mode comparisons; the sensitivity cannot establish that the survey change caused pessimism.'),
         p('Michigan documents partisan differences and releases demographic breakdowns. The October preliminary description emphasizes lower-income consumers and smaller stock portfolios; these published observations are contextual evidence, not respondent-level controls. No individual party identification, exposure, geography, recall or beliefs are observed in the monthly analytic panel. The project does not manufacture subgroup estimates or equate a national aggregate with any specific group.'),
-        p('A strong version of the media-bias explanation would be weakened if household controls or survey-method adjustments explain the gap, if the same negative coverage accurately reflects documented pressure, or if media associations vanish after lagged sentiment and common shocks are addressed. These are substantive rival explanations, not nuisance controls selected to preserve a preferred result.')]))
+        p(dynamics_text())]))
     pages.append(('5. Media corpus: balance, units and limitations', [
         p(f'The corpus covers January 2020 through October 12, 2026, including {len(completed)} complete months and a partial October monitoring month. Google News RSS retrieves economic titles for a fixed national panel (AP, Reuters, NPR) and a local panel (Gothamist, Texas Tribune, Colorado Sun). Hacker News Algolia supplies public user-posted story titles. The same broad concept family includes the economy, inflation, unemployment, wages, housing and the cost of living; queries do not condition on negative sentiment.'),
         figure('media_coverage','Counts and source availability accompany the content index. A sparse or missing outlet-month is a sampling limitation, not zero coverage of that topic.'),
@@ -170,7 +209,7 @@ def sections():
             ['Political attribution','Actor mentions and directional credit/blame proxies separately. Criticism and attribution do not establish bias.']], [.24,.76]),
         p('The codebook is frozen before project scoring, with subsequent relevance-screen amendments disclosed separately. The primary classifier is an immutably pinned CardiffNLP Twitter RoBERTa sentiment model. Model artifacts and inputs are hashed; the model is not fine-tuned on Michigan outcomes. VADER is the conventional dictionary comparison. Rule-based frame and salience indicators remain unvalidated literal proxies. Exact specifications and annotation instructions are retained in the reproducibility package.'),
         p('The contextual model was introduced in 2022 with training text through 2021. Applying it to earlier titles uses a later language representation, so the full media analysis is retrospective pseudo-out-of-sample measurement. A genuinely historical deployment claim would require models, feeds and original wording frozen at each date. The dictionary and post-2022 sensitivities narrow, but do not eliminate, those limitations.'),
-        p('Benchmarks must match the proposed bias. Source differences under the same queries measure sample asymmetry, not distortion relative to all economic reality. A stronger test would match official releases across outlets and control for release magnitude and expected surprise. Consensus surprises and a complete publication denominator are unavailable, so that test is proposed. A purposive check finds eight unemployment-title percentages numerically aligned with archived release values; omitted definitions/periods and unreliable intraday timing prevent a full factual-accuracy classification or population error rate.'),
+        p('Benchmarks must match the proposed bias. The supplemental comparison on page 11 matches providers on identical official releases and estimates relative negative framing. This controls the release being covered but cannot equate all truthful components emphasized in a headline. An equivalent-surprise selection test remains prospective because archived expectations and a complete publication denominator are unavailable. Eight purposively selected unemployment-title percentages align with official releases; missing definitions/periods and intraday uncertainty prevent a full factual-accuracy classification.'),
         p('Political-name swaps and source-label prefixes stress-test otherwise similar inputs. Score changes are reported as robustness diagnostics; a changed actor can also change meaning. Evidence excerpts and versioned instructions accompany the annotation workflow. No title-only classifier can establish availability, confirmation or negativity bias inside a reader.')]))
     pages.append(('7. Validation status and honest performance claims', [
         p('The assignment explicitly requires at least 300 items labeled by two independent human annotators. No completed independent human labels were available. The project therefore prepares the blinded human worksheets, guide, adjudication procedure and validation code, and conducts independent AI reviews where available. AI reviews do not satisfy the human requirement. This is a material rubric limitation of the delivered project.'),
@@ -201,12 +240,12 @@ def sections():
             ['Matched-release asymmetry vanishes after surprise controls','Different news content can reflect different events rather than selective emphasis.'],
             ['No framing effect or recall mechanism in a powered experiment','Weakens the proposed mechanism under the tested conditions.']], [.57,.43]),
         p('Transporting a sample experiment to the national Michigan index would require representative or reweighted sampling, actual population exposure estimates, outcome comparability, heterogeneous-effect estimates and defensible transportability assumptions. The experiment alone would not identify an effect on the national index. The full plan and assumptions are in docs/causal_design.md.')]))
-    pages.append(('10. Dashboard, election window and financial use', [
-        figure('media_tone','Measured wording in the sampled title panel. Available-group weighting and changing source coverage qualify comparisons over time.'),
-        p('The self-contained interactive dashboard displays observed sentiment and the economic prediction with uncertainty, the residual gap, media tone, frame/salience proxies, source coverage, model performance and official release events. Factual-error rates remain unavailable. Date zooming and series toggles support inspection; the artifact opens locally without a server. Its displayed cutoff is October 13, 2026, before election day.'),
-        p('Prospective updates should preserve old snapshots rather than overwrite them: monitor the October 23 Michigan final release; October 29 GDP advance and scheduled PCE release; and election-week labor and survey releases, verifying each official calendar at acquisition. The project must not insert Q3 GDP before publication or use an October final estimate in an October 13 snapshot. The local scripts record request and observation dates and rebuild every exhibit after an update.'),
-        p('A forecasting team can use a persistent gap as a diagnostic of model failure or household pressure and use frame shares to guide scenario research. It should compare against persistence, check composition and calibration, and require prospective validation before changing exposures. No asset-return model, transaction-cost analysis or implementable investment strategy is estimated here.'),
-        p('Election proximity is a calendar feature, not an identified treatment. Changes during the campaign may reflect releases, policies, geopolitical shocks, survey composition or other news. The dashboard therefore displays the election as context and makes no causal campaign attribution. Income, age and party descriptions from published survey reports remain context until aligned subgroup series and exposure data are available.')]))
+    pages.append(('10. Provider comparison and monitoring', [
+        figure('provider_bias',provider_caption()),
+        p('The y-axis operationalizes a relative negativity-bias proxy; the x-axis identifies news providers. The supplement uses common 2026 official release events, identical search rules, source-blind classification, within-provider/event averaging and equal event weights. CNBC, Fox News and Fox Business are separate publications. This supplemental sample does not change the original monthly forecasting corpus or its results.'),
+        p('A positive bar is not proof of distortion. Providers can truthfully emphasize different components, such as unemployment versus wages. Zero is not objective neutrality. Some signs change under dictionary or single-title sensitivities; the ranking is unstable. The new providers lack human validation, and the original AI review contains no CNBC or Fox items. Feed selection, few clusters and classification error limit interpretation. The chart does not measure ideological slant, factual dishonesty, exposure or a causal sentiment effect.'),
+        p('The interactive dashboard also displays sentiment, the economic prediction and intervals, the gap, media dimensions, source composition and performance. Preserve the October 13 economic snapshot when updating; October 23 Michigan final and October 29 GDP/PCE releases remain prospective. Election proximity is context, not an identified treatment.'),
+        p('Use provider differences to target matched-story review and forecast-risk scenarios. Require factual calibration, independent human validation and prospective forecast gains before changing investment exposure. The project does not estimate a profitable trading strategy.')]))
     pages.append(('11. Answers, limits and principal references', [
         table(['Required research question','Answer supported by this project'],[
             ['How measure coverage bias?','Define an event/accuracy benchmark; measure tone, selection, framing, calibration and attribution separately. Current proxies measure content, not a validated global bias score.'],
@@ -217,14 +256,15 @@ def sections():
             ['What would contradict media bias?','Successful household controls, unstable or null incremental prediction, calibrated coverage, and null properly powered framing effects.']], [.31,.69]),
         p('Material limitations: no two-human validation, no verified corpus-wide factual calibration, no respondent exposure, no historical consensus surprises, selected and capped title sources, retrospective wording/model availability, and aggregate controls. These prevent a claim that media bias explains the national sentiment gap. A rigorous provisional or null finding is preferable to an invented effect.'),
         p('Principal primary sources: [Michigan index and October preliminary](https://www.sca.isr.umich.edu/); [Michigan release calendar](https://data.sca.isr.umich.edu/fetchdoc.php?docid=79628); [Michigan web transition](https://www.sca.isr.umich.edu/files/methodtransitionannouncement2024.pdf); [Michigan revised 2026 methodology report](https://www.sca.isr.umich.edu/files/partisaneconomy202607_revised.pdf); [BLS CPS](https://www.bls.gov/cps/); [BLS shutdown impact](https://www.bls.gov/cps/methods/2025-federal-government-shutdown-impact-cps.htm); [BEA August PCE](https://www.bea.gov/news/2026/personal-income-and-outlays-august-2026); [BEA GDP](https://www.bea.gov/data/gdp/gross-domestic-product); [ALFRED](https://alfred.stlouisfed.org/); [CardiffNLP](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest); [VADER](https://github.com/cjhutto/vaderSentiment); [HN API](https://hn.algolia.com/api). Precise sources and methodological notes are in docs/sources.md.'),
-        p('Reproducibility: acquisition and scoring commands, exact environment lock, raw-response hashes, source and cutoff manifests, frozen codebook, annotation guide, executed notebook, and dashboard generator accompany the project. AI_USE.md discloses substantial agent assistance and the distinction between AI diagnostics and human validation. No human subjects, financial trades or institutional submission were performed.')]))
+        p('The provider comparison follows the distinction between selection and presentation in [Budak, Goel and Rao (2016)](https://5harad.com/papers/mediabias.pdf). Its generic negative-wording proxy is different from the politically anchored slant index of [Gentzkow and Shapiro (2010)](https://web.stanford.edu/~gentzkow/research/biasmeas.pdf). These references motivate the construct boundary; they do not validate this classifier or custom metric.'),
+        p('Reproducibility: acquisition/scoring commands, environment lock, payload hashes, source/cutoff manifests, codebook, annotation guide, executed notebook and dashboard generator accompany the project. AI_USE.md discloses substantial AI assistance. No human subjects, trades or institutional submission were performed.')]))
     return pages
 
 
 def slides():
     e = evidence()
     latest = e['primary'].iloc[-1]
-    return [
+    deck = [
         {'title':'Economic narratives & consumer sentiment',
          'points':['Ahead of the November 2026 midterms','What explains the gap: household pressure, framing, or measurement?','Panagiotis Housos · ph2606'],
          'notes':'This project asks why consumer sentiment can appear weak while headline economic indicators look stronger. The setting is the months before the November 2026 midterm elections, with an information cutoff of October 13. I compare three explanations: pressures that headline indicators miss, selective information or framing, and differences in measurement or timing. The aim is to separate these explanations with evidence. A negative story is not automatically biased, and a pessimistic consumer is not automatically irrational. The practical application is better forecasting and risk monitoring, rather than a presumed media effect.'},
@@ -257,3 +297,11 @@ def slides():
          'points':['Use the gap to diagnose forecast failure','Check household controls and source composition','Update from official releases and preserve vintages','Require prospective validation before investment use'],
          'notes':'The useful deliverable is an updateable monitoring process. The dashboard shows the economic forecast, uncertainty, the gap, provisional narrative measures, source coverage and upcoming releases. A team can use it to ask whether the model is missing household pressure or whether a narrative change merits closer research. It should preserve snapshots and check prospective performance before changing investment exposure. The study does not estimate a profitable trading strategy or a causal national media effect. Its main conclusion is that timing, definitions, validation and alternative explanations have to be resolved before an apparent sentiment discrepancy becomes a financial signal.'}
     ]
+    deck.insert(5,{'title':'Provider comparison: the same economic releases',
+        'points':['X-axis: CNBC, Fox brands and other providers',
+                  'Y-axis: excess negative-headline share, pp',
+                  'Zero is a sampled peer benchmark',
+                  'Monthly resampling ranges; provisional labels'],
+        'image':'provider_bias',
+        'notes':'This new chart compares providers covering the same official economic releases. For each release, I calculate the share of negative economic headlines within each provider and subtract the equal-weight average of the other providers. I then average the differences over an identical set of releases. Positive bars mean more negative wording relative to sampled peers. Zero is a reference, not a declaration of neutrality. The intervals resample calendar months and do not capture classifier or retrieval error. Different true components can justify different headlines, and the new providers lack independent human validation. The chart therefore measures a defined relative framing proxy rather than factual dishonesty, ideological bias, audience exposure or an effect on consumer sentiment.'})
+    return deck

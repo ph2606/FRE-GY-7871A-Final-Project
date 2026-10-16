@@ -1,8 +1,10 @@
 """Build the report, saved-output notebook, dashboard and narrated presentation."""
 from pathlib import Path
+import hashlib
 import re
 import sys
 import json
+import shutil
 import nbformat as nbf
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -106,21 +108,32 @@ def build_report(content):
 
 
 def build_notebook(content):
+    input_paths = ['data/processed/monthly_dataset.csv','data/processed/media_monthly.csv',
+                   'outputs/tables/provider_bias.csv']
+    expected_inputs = {name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+                       for name in input_paths if (ROOT/name).exists()}
     cells = [nbf.v4.new_markdown_cell('# Economic narratives and consumer sentiment\n\n**Panagiotis Housos | ph2606 | AI Applications in Finance | Final Project**\n\nInformation cutoff: October 13, 2026. Human validation is not completed; independent AI reviews are explicitly separate. Acquisition and model scoring run separately. The cells below rerun analysis from local frozen inputs. Raw datasets are excluded from Git under the established submission policy.'),
-             nbf.v4.new_code_cell("from pathlib import Path\nimport json\nimport pandas as pd\nfrom IPython.display import display, Image\nROOT = Path.cwd()\nassert (ROOT / 'src/economics.py').exists(), 'Execute from the project root.'\npd.set_option('display.max_columns', 14)\npd.set_option('display.max_colwidth', 70)\npd.set_option('display.precision', 4)"),
+             nbf.v4.new_code_cell("from pathlib import Path\nimport json\nimport hashlib\nimport pandas as pd\nfrom IPython.display import display, Image\nROOT = Path.cwd()\nassert (ROOT / 'src/economics.py').exists(), 'Execute from the project root.'\nexpected_inputs = " + repr(expected_inputs) + "\nfor name, expected in expected_inputs.items():\n    path = ROOT / name\n    assert path.exists(), f'Acquire required input: {name}'\n    assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, f'Input changed: {name}. Rerun analysis and rebuild deliverables before executing this notebook.'\npd.set_option('display.max_columns', 14)\npd.set_option('display.max_colwidth', 70)\npd.set_option('display.precision', 4)"),
              nbf.v4.new_markdown_cell('## Recompute the frozen empirical analysis\n\nThe economic feature matrix uses historical ALFRED snapshots. Media reconstruction is retrospective and subject to source selection and original-wording limitations. The package never invents missing records, exposure or human labels.'),
-             nbf.v4.new_code_cell("import subprocess, sys\nresult = subprocess.run([sys.executable, 'scripts/03_analyze.py'], cwd=ROOT, capture_output=True, text=True)\nprint(result.stdout)\nassert result.returncode == 0, result.stderr\nprint('Analysis recalculated from acquired observations.')")]
+             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary analysis and exploratory dynamics recalculated from acquired observations.')")]
+    cells += [nbf.v4.new_markdown_cell('## Persistence and differenced-model sensitivity\n\nThese checks were added after the primary analysis and are exploratory. ADF and KPSS have different null hypotheses; structural breaks limit either interpretation. The differenced models use the same 44 test months and a separately identified two-contrast loss-test family.'),
+              nbf.v4.new_code_cell("display(pd.read_csv(ROOT / 'outputs/tables/dynamics_unit_root.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_differenced_metrics.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_loss_hac.csv'))")]
     cells += [nbf.v4.new_markdown_cell('## Independent AI diagnostic: class and source concordance\n\nThese are AI development references, not human ground truth. The original pool has 300 items; final-corpus eligibility and mixed/uncertain exclusions are explicit. Small source/class cells have unstable estimates. Required human validation remains pending.'),
               nbf.v4.new_code_cell("path = ROOT / 'outputs/ai_diagnostic_validation_metrics.json'\nai = json.loads(path.read_text()) if path.exists() else {}\nif ai:\n    display(pd.Series({k: ai.get(k) for k in ['label_type','completed_independent_pairs','tone_agreement','tone_cohens_kappa','annotation_pool_final_eligible_n','annotation_pool_final_excluded_n','human_specific_requirement_satisfied']}))\n    rows, classes = [], []\n    for annotator, models in ai['model_reference_concordance'].items():\n        for model, entry in models.items():\n            for source, result in entry['by_source'].items():\n                rows.append({'reference': annotator, 'model': model, 'source': source, 'n': result['n'], 'agreement': result['agreement'], 'macro_F1_concordance': result['macro_f1_reference_concordance']})\n            for label, result in entry['class_concordance'].items():\n                classes.append({'reference': annotator, 'model': model, 'class': label, **result})\n    display(pd.DataFrame(rows))\n    display(pd.DataFrame(classes))\nelse:\n    print('Independent AI diagnostic inputs are unavailable in this clone; no human labels are inferred.')"),
               nbf.v4.new_markdown_cell('## Political-name and source-label stress tests\n\nThe original text is held constant except for the specified change. Changed names can change meaning. Class switches do not prove political discrimination or factual bias.'),
               nbf.v4.new_code_cell("media_summary = json.loads((ROOT / 'outputs/media_summary.json').read_text())\ndisplay(pd.DataFrame(media_summary['perturbation']['variant_comparisons']))\nprint('Source-prefix paired mean absolute tone difference:', media_summary['perturbation']['source_pair_mean_absolute_delta'])\nprint('Factual-calibration status:', media_summary.get('factual_calibration'))")]
-    for title, items in content:
+    if (ROOT/'outputs/tables/provider_bias.csv').exists():
+        cells += [nbf.v4.new_markdown_cell('## News-provider comparison: matched official releases\n\nA separate supplemental sample includes CNBC and Fox brands. The provider bars use a common set of releases and a defined peer reference. This is a relative negative-framing proxy, not a factual or ideological rating. The original forecast corpus and 300-title AI review remain separate; the new providers do not have independent human validation.'),
+                  nbf.v4.new_code_cell("provider_table = pd.read_csv(ROOT / 'outputs/tables/provider_bias.csv')\ndisplay(provider_table)\nprovider_summary = json.loads((ROOT / 'outputs/tables/provider_bias_summary.json').read_text())\ndisplay(pd.Series(provider_summary, name='provider_comparison_protocol'))")]
+    for page_index,(title, items) in enumerate(content):
         cells.append(nbf.v4.new_markdown_cell('## ' + title))
-        for item in items:
+        for item_index,item in enumerate(items):
             if item['type'] == 'p':
                 cells.append(nbf.v4.new_markdown_cell(item['text']))
             elif item['type'] == 'table':
-                code = 'table = pd.DataFrame(' + repr(item['rows']) + ', columns=' + repr(item['headers']) + ')\ndisplay(table)'
+                code = ("import sys\nif str(ROOT / 'scripts') not in sys.path: sys.path.insert(0, str(ROOT / 'scripts'))\n"
+                        "from study_content import sections\nitem = sections()["+str(page_index)+"][1]["+str(item_index)+"]\n"
+                        "display(pd.DataFrame(item['rows'], columns=item['headers']))")
                 cells.append(nbf.v4.new_code_cell(code))
             elif item['type'] == 'figure':
                 cells.append(nbf.v4.new_code_cell("display(Image(filename=str(ROOT / 'outputs' / " + repr(item['name'] + '.png') + ")))"))
@@ -182,4 +195,7 @@ if __name__ == '__main__':
     build_notebook(content)
     build_dashboard()
     build_slides(slides())
+    if (ROOT/'outputs/provider_bias.png').exists():
+        shutil.copyfile(ROOT/'outputs/provider_bias.png',ROOT/'Provider_Bias_Comparison.png')
+        shutil.copyfile(ROOT/'outputs/provider_bias.pdf',ROOT/'Provider_Bias_Comparison.pdf')
     print('Built 12-page report source, notebook, dashboard, and presentation.')

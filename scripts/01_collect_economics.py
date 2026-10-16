@@ -19,7 +19,7 @@ import pandas as pd
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.economics import ROOT, CUTOFF, SERIES, OCTOBER_PRELIMINARY, parse_alfred, parse_michigan, sha256, vintage_features, write_json
+from src.economics import ROOT, CUTOFF, SERIES, OCTOBER_PRELIMINARY, parse_alfred, parse_michigan, eligible_final_targets, sha256, vintage_features, write_json
 
 RAW = ROOT / "data/raw/economics"
 OUT = ROOT / "data/processed"
@@ -167,7 +167,7 @@ def main():
     # Official component header order is ICC (current) then ICE (expectations).
     components = components.rename(columns={components.columns[0]: "current_conditions", components.columns[1]: "expectations"})
     michigan = headline.join(components)
-    michigan = michigan.loc[michigan.index <= CUTOFF].copy()
+    michigan = eligible_final_targets(michigan)
     michigan.to_csv(OUT / "michigan_official.csv")
     if not args.latest_only:
         rows = []

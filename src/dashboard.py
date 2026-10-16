@@ -34,7 +34,7 @@ def style(fig, title, height=380, ytitle=None):
 
 def table_html(df, limit=25):
     return df.head(limit).to_html(index=False, border=0, classes='data-table',
-                                 float_format=lambda x: f'{x:.3f}') if not df.empty else '<p>Unavailable in this snapshot.</p>'
+                                 na_rep='Unavailable',float_format=lambda x: f'{x:.3f}') if not df.empty else '<p>Unavailable in this snapshot.</p>'
 
 
 def build():
@@ -45,6 +45,11 @@ def build():
     monitoring = frame(OUT / 'monitoring_forecasts.csv')
     monitor = monitoring[monitoring.model.eq('M1_economic')] if not monitoring.empty else monitoring
     media_summary = read_json(ROOT / 'outputs' / 'media_summary.json')
+    provider_coverage = frame(OUT / 'provider_bias.csv')
+    providers = provider_coverage.copy()
+    if 'comparison_status' in providers:
+        providers=providers.loc[providers.comparison_status.eq('main_common_event_panel')]
+    provider_summary = read_json(OUT / 'provider_bias_summary.json')
     ai = read_json(ROOT / 'outputs' / 'ai_diagnostic_validation_metrics.json')
     figures = []
     if not forecasts.empty:
@@ -82,6 +87,25 @@ def build():
             gap.add_trace(go.Scatter(x=[r.month],y=[r.gap_preliminary],mode='markers',
                                     name='October preliminary gap',marker={'color':RED,'symbol':'diamond','size':11}))
         figures.append(style(gap, 'Sentiment gap: unexplained under M1, without a causal interpretation', 320, 'Index points'))
+    if not providers.empty:
+        providers = providers.sort_values('provider')
+        custom = np.column_stack([providers.n_titles,providers.n_events,providers.lower_95,providers.upper_95])
+        fig = go.Figure(go.Bar(x=providers.provider,y=providers.bias_pp,
+                    marker_color=NAVY,name='Provider framing proxy',customdata=custom,
+                    hovertemplate='%{x}<br>Relative negative framing: %{y:.2f} pp<br>95% resampling range: [%{customdata[2]:.2f}, %{customdata[3]:.2f}]<br>Titles: %{customdata[0]:.0f}<br>Common releases: %{customdata[1]:.0f}<extra></extra>'))
+        interval_x,interval_y=[],[]
+        for row in providers.itertuples():
+            interval_x += [row.provider,row.provider,None]
+            interval_y += [row.lower_95,row.upper_95,None]
+        fig.add_trace(go.Scatter(x=interval_x,y=interval_y,mode='lines+markers',
+                                 line={'color':'#536977','width':1.3},
+                                 marker={'symbol':'line-ew','size':9,'color':'#536977'},
+                                 showlegend=False,hoverinfo='skip'))
+        fig.add_hline(y=0,line_color='#657782',line_width=1)
+        fig.update_xaxes(title='News provider')
+        fig.update_layout(showlegend=False)
+        figures.append(style(fig,'Provider bias proxy: same-release negative framing',450,
+                             'Excess negative headlines<br>(percentage points vs same-release peers)'))
     if not monthly.empty:
         candidates = [c for c in monthly if (c.startswith('salience_') or any(t in c.lower() for t in
                       ['tone','valence','negative','price_level','inflation_rate','household','national','forecast','layoff','hiring','recession','political','calibrat'])
@@ -133,6 +157,12 @@ def build():
 <div class="card notice"><strong>Interpretation and data status</strong><p>A negative sentiment gap is unexplained under the specified model. It does not establish irrational consumers or a media effect. Media variables measure sampled content supply; exposure and cognitive bias are unobserved. The 2026 monitoring period is a snapshot, and partial October data must not be compared with complete months without qualification.</p><p>Factual accuracy has not been established for the corpus: numerical-claim screening is verification eligibility, never an accuracy score. Independent AI annotation is a development diagnostic; the required two-human validation is incomplete. Q3 GDP from the supplied workbook is quarantined until its official release.</p></div>
 '''
     html += ''.join('<div class="card">' + x + '</div>' for x in embedded)
+    if not providers.empty:
+        html += '<div class="card scroll"><h2>How to read the provider comparison</h2><p>Providers are compared on an identical set of official economic releases. Within each release, the negative-headline share for each provider is compared with the equal-weight average of the other providers; release differences are then averaged. Positive bars mean more negative wording in this sample. Zero means the peer reference, not factual neutrality. Error bars resample calendar-month blocks; few months and selected feeds limit precision.</p><p>Different true components of a release can justify different headlines. This proxy combines framing and emphasis; it does not establish factual error, partisan slant, audience exposure or an effect on consumer sentiment. CNBC and Fox provider records are a separate supplement and never change the frozen historical media forecast.</p>'
+        html += table_html(providers[['provider','bias_pp','lower_95','upper_95','n_titles','n_events']],20)+'</div>'
+        if len(provider_coverage)>len(providers):
+            html += '<div class="card scroll"><h2>Provider coverage and comparability</h2><p>Providers outside the identical-release panel receive no comparable bias bar. Missing comparable coverage is never coded as zero or interpreted as ignoring an event.</p>'
+            html += table_html(provider_coverage[['provider','comparison_status','n_titles','n_events']],20)+'</div>'
     if not monitor.empty:
         r = monitor.iloc[-1]
         html += '<div class="card"><h2>October preliminary monitoring</h2>'
