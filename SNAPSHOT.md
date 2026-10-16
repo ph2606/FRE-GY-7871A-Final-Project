@@ -4,8 +4,8 @@ Information cutoff: **October 13, 2026**, America/New_York. Election day is outs
 Raw/derived datasets, detailed annotations and model weights remain local and are excluded from Git.
 A fresh download reproduces the method, but mutable search feeds, original wording, deletions and revisions can change results.
 
-- Local file inventory: 4,259 files, 739,379,188 bytes.
-- Canonical inventory SHA-256: `14a272f35e99b574deac75ddb89bc9f9b19338b5a2e5541abd1db09c122787e0`.
+- Local file inventory: 4,294 files, 764,567,161 bytes.
+- Canonical inventory SHA-256: `df5c970f693846b61e28cf3b3681523630a5ea2df9fe93e0240c4e4582472157`.
 - Full itemized inventory is local at `outputs/snapshot_manifest.json`.
 - Media: 3,787 titles, 82 months, 81 complete.
 - Common media assessment: 44 months.
@@ -24,12 +24,12 @@ A fresh download reproduces the method, but mutable search feeds, original wordi
 | `docs/MEDIA_CODEBOOK.md` | `130688ff3da3bb23f52c7e6681bd4daf6dbc9e2dfb7348dccc0dadab452b6e29` |
 | `outputs/tables/provider_bias.csv` | `06e999b8b87368f37891f4a25c347bf63ccd3e00278a513dfcc68cb3d3efeeb9` |
 | `outputs/tables/provider_bias_summary.json` | `b0131239a41d3bb7e48a14c520fa0ad4fc84f6dba74135f20caa54383d28b28c` |
-| `Provider_Bias_Comparison.png` | `635048705b19fe72b3a86e9f87107054500539ca91633715b5d6b27b9fea3262` |
-| `Provider_Bias_Comparison.pdf` | `f898b5d5cb451b8b27cbd06242d833426bfc1633b9f3bb9a0a69ac590ffd4bf4` |
-| `Panagiotis_Housos_Final_Project.pdf` | `60e36ae3ff934acd6b214793d4d46f350638264115652829cecfc9e28f29ce4a` |
-| `Panagiotis_Housos_Final_Project.pptx` | `7b0048b1450a24d4c4411c6564d2e63c2c1056ea034368835c6d7c9ee0a5693e` |
-| `final_project.ipynb` | `aede973ca9a4617c8845cee3b5d3758c82462925d9ba1712490526e1c700174e` |
-| `dashboard.html` | `9afdd5b31e2dd566fd99545d98b596e021285304a582d363c29c3e93fe59f8b2` |
+| `Provider_Bias_Comparison.png` | `97e92f7e8e98c7dacf236e32e9de504765ec5849900e1a39be80b2433dba6966` |
+| `Provider_Bias_Comparison.pdf` | `970b52600f5e8a52a04d1092ef6b820ecdca081b63cdffd08de843d170f3b41c` |
+| `Panagiotis_Housos_Final_Project.pdf` | `ece2f6b3ab51189baeaccd0e7ef9b226a262559206d7efdc8f2bfab6e4ccb678` |
+| `Panagiotis_Housos_Final_Project.pptx` | `25c807b1e97c18beae6137d587f6c7804df971f34fa2971e5ec52e6545ec1f9b` |
+| `final_project.ipynb` | `1032f8851639fc59deb4ad32dded4574fe1e92a594f38d52c2c3f22b5bf3e18e` |
+| `dashboard.html` | `0522537002f0e2ce9f6c3400e5b5b9f3c58d60636b8fbddd7844b9db340359ff` |
 
 Observed interpreter: Python 3.12.5 on Windows; exact package closure in requirements-lock.txt.
 The latest Michigan historical targets are not historical survey vintages. Macro predictors use actual ALFRED snapshots; media tests remain retrospective pseudo-out-of-sample.

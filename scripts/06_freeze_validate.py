@@ -103,7 +103,7 @@ def main():
     assert 6 <= words/140 <= 8, f'Narration duration {words/140:.2f} minutes'
     html = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
     assert 'Plotly.newPlot' in html and 'Human validation outstanding' in html
-    assert 'Provider bias proxy' in html and 'CNBC' in html and 'Fox News' in html
+    assert 'Relative negative framing' in html and 'CNBC' in html and 'Fox News' in html
     chart_ids = re.findall(r'<div id="(chart-\d+)"', html)
     assert len(chart_ids) == len(set(chart_ids)) == 8, 'Missing or duplicated dashboard charts'
     provider=pd.read_csv(OUT/'tables/provider_bias.csv')

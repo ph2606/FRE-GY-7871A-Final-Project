@@ -9,11 +9,12 @@ import nbformat as nbf
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'scripts'))
-from study_content import sections, slides
+from study_content import sections, slides, evidence
 from src.dashboard import build as build_dashboard
 from src.exhibits import build as build_figures
 from src.annotation_packet import build as build_human_packet
@@ -44,28 +45,38 @@ def latex_table(item):
     widths = item.get('widths', [1 / n] * n)
     layout = ''.join(r'>{\raggedright\arraybackslash}p{' + str(w) +
                      r'\dimexpr\linewidth-' + str(2*n) + r'\tabcolsep\relax}' for w in widths)
-    lines = [r'\par\smallskip\noindent{\fontsize{9.0}{11.1}\selectfont',
-             r'\begin{tabular}{' + layout + '}', r'\toprule',
-             ' & '.join(r'\textbf{' + esc(h) + '}' for h in item['headers']) + r' \\', r'\midrule']
-    lines.extend(' & '.join(esc(x) for x in row) + r' \\[3pt]' for row in item['rows'])
-    return '\n'.join(lines + [r'\bottomrule\end{tabular}}\par\smallskip'])
+    lines = [r'\par\smallskip\noindent{\sffamily\fontsize{9.0}{11.1}\selectfont\setlength{\fboxsep}{0pt}%',
+             r'\colorbox{mist}{\begin{tabular}{' + layout + '}',
+             ' & '.join((r'\rule[-4pt]{0pt}{17pt}' if i == 0 else '') +
+                         r'\textbf{\color{navy}' + esc(h) + '}' for i, h in enumerate(item['headers'])) + r' \\',
+             r'\end{tabular}}\par\nobreak\nointerlineskip\noindent%',
+             r'\begin{tabular}{' + layout + '}', r'\toprule[0.3pt]']
+    lines.extend(' & '.join((r'\textbf{' + esc(x) + '}') if i == 0 else esc(x)
+                            for i, x in enumerate(row)) + r' \\[3pt]' for row in item['rows'])
+    return '\n'.join(lines + [r'\bottomrule[0.4pt]\end{tabular}}\par\smallskip'])
 
 
 PREAMBLE = r'''\documentclass[11pt,letterpaper]{article}
-\usepackage[margin=0.7in,headheight=15pt,headsep=13pt,footskip=20pt]{geometry}
+\usepackage[margin=0.7in,headheight=21pt,headsep=10pt,footskip=20pt]{geometry}
 \usepackage{fontspec}
-\IfFontExistsTF{Cambria}{\setmainfont{Cambria}}{\setmainfont{Latin Modern Roman}}
+\IfFontExistsTF{Cambria}{\setmainfont{Cambria}[Ligatures=NoCommon]}{\setmainfont{Latin Modern Roman}[Ligatures=NoCommon]}
 \IfFontExistsTF{Calibri}{\setsansfont{Calibri}}{\setsansfont{Latin Modern Sans}}
-\usepackage{amsmath,booktabs,array,graphicx,xcolor,fancyhdr,titlesec,hyperref}
-\definecolor{navy}{HTML}{18354B}\definecolor{teal}{HTML}{087E83}
+\IfFontExistsTF{Georgia}{\newfontfamily\coverfont{Georgia}}{\newfontfamily\coverfont{Latin Modern Roman}}
+\usepackage{xcolor}
+\usepackage{amsmath,booktabs,array,graphicx,fancyhdr,titlesec,hyperref}
+\definecolor{navy}{HTML}{172F43}\definecolor{teal}{HTML}{167D8D}
+\definecolor{slate}{HTML}{657787}\definecolor{mist}{HTML}{EAF1F4}
+\definecolor{rulecolor}{HTML}{CDDCE2}\definecolor{coral}{HTML}{C77B68}
 \hypersetup{colorlinks=true,urlcolor=teal,linkcolor=navy,pdfauthor={Panagiotis Housos},pdftitle={Economic Narratives and Consumer Sentiment Ahead of the 2026 Midterms}}
+\color{navy}
 \pagestyle{fancy}\fancyhf{}
-\fancyhead[L]{\sffamily\small AI Applications in Finance | Final Project}
-\fancyhead[R]{\sffamily\small Panagiotis Housos | ph2606}
-\fancyfoot[L]{\sffamily\footnotesize Information cutoff: October 13, 2026 | Preliminary evidence}
-\fancyfoot[R]{\sffamily\small\thepage\ / 12}
-\renewcommand{\headrulewidth}{0.3pt}
-\titleformat{\section}{\sffamily\Large\bfseries\color{navy}}{}{0pt}{}
+\fancyhead[L]{\sffamily\fontsize{8.3}{10}\selectfont\color{slate} AI APPLICATIONS IN FINANCE\quad /\quad RESEARCH REPORT}
+\fancyhead[R]{\sffamily\fontsize{8.3}{10}\selectfont\color{slate} Panagiotis Housos\enspace |\enspace ph2606}
+\fancyfoot[L]{\sffamily\fontsize{8.0}{10}\selectfont\color{slate} Information cutoff: October 13, 2026\enspace |\enspace Preliminary evidence}
+\fancyfoot[R]{\sffamily\small\color{teal}\bfseries\ifnum\value{page}<10 0\fi\thepage\enspace\textcolor{slate}{/ 12}}
+\renewcommand{\headrulewidth}{0.35pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{rulecolor}\leaders\hrule height \headrulewidth\hfill}}
+\titleformat{\section}{\sffamily\fontsize{18}{21}\selectfont\bfseries\color{navy}}{}{0pt}{}
 \titlespacing*{\section}{0pt}{0pt}{10pt}
 \setlength{\parindent}{0pt}\setlength{\parskip}{7pt}
 \setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.05}
@@ -77,17 +88,35 @@ PREAMBLE = r'''\documentclass[11pt,letterpaper]{article}
 
 def build_report(content):
     tex = [PREAMBLE]
+    data = evidence()
+    latest = data['primary'].iloc[-1]
+    cards = [(f"{int(data['media'].item_count.sum()):,}", 'Sampled economic titles'),
+             (str(int(data['comparison'].n.iloc[0])), 'Common forecast months'),
+             (f'{latest.gap:.1f}', 'September M1 gap / index pts')]
+    figure_number = 0
     markdown = ['# Economic Narratives and Consumer Sentiment Ahead of the 2026 Midterms',
                 'Panagiotis Housos | ph2606 | Fall 2026', '']
     for page, (title, items) in enumerate(content):
         if page:
             tex.append(r'\newpage')
+        tex.append(r'\setlength{\parskip}{' + ('5.5pt' if page == 6 else '7pt') + '}')
         if page == 0:
-            tex += [r'{\sffamily\fontsize{23}{27}\selectfont\bfseries\color{navy} Economic Narratives and Consumer Sentiment}\par',
-                    r'{\sffamily\large Ahead of the 2026 U.S. Midterm Elections}\par\bigskip']
+            tex += [r'{\sffamily\fontsize{9}{11}\selectfont\bfseries\color{teal} ECONOMIC PERCEPTIONS\quad /\quad 2026 MIDTERMS}\par\vspace{5pt}',
+                    r'{\coverfont\fontsize{30}{33}\selectfont\color{navy} Economic narratives\\[-1pt]\& consumer sentiment}\par\vspace{5pt}',
+                    r'{\sffamily\fontsize{11}{14}\selectfont\color{slate} Ahead of the 2026 U.S. midterm elections}\par\vspace{8pt}',
+                    r'\begingroup\setlength{\fboxsep}{8pt}\noindent']
+            for i, (value, label) in enumerate(cards):
+                tex.append(r'\colorbox{mist}{\begin{minipage}[c][43pt][c]{.29\linewidth}\raggedright'
+                           + r'{\sffamily\fontsize{24}{27}\selectfont\bfseries\color{navy} ' + esc(value) + r'}\par\vspace{2pt}'
+                           + r'{\sffamily\fontsize{8.2}{10}\selectfont\color{slate} ' + esc(label)
+                           + r'}\end{minipage}}' + (r'\hfill' if i < 2 else ''))
+            tex.append(r'\par\endgroup\vspace{12pt}')
         if page == 11:
             tex.append(r'\fontsize{9.4}{11.8}\selectfont')
-        tex.append(r'\section*{' + esc(title) + '}')
+        numbered = re.match(r'^(\d+)\.\s+(.*)', title)
+        heading = (r'\textcolor{teal}{\fontsize{11}{13}\selectfont ' + numbered[1].zfill(2)
+                   + r'}\quad ' + esc(numbered[2])) if numbered else esc(title)
+        tex.append(r'\section*{' + heading + '}')
         markdown += ['## ' + title, '']
         for item in items:
             if item['type'] == 'p':
@@ -100,8 +129,11 @@ def build_report(content):
                 markdown += ['| ' + ' | '.join(map(str, row)) + ' |' for row in item['rows']]
                 markdown.append('')
             elif item['type'] == 'figure':
+                figure_number += 1
                 tex += [r'\begin{center}\includegraphics[width=' + item.get('width', '.97') + r'\linewidth]{outputs/' + item['name'] + r'.pdf}\end{center}',
-                        r'{\footnotesize\color{navy} ' + prose(item['caption']) + r'\par}']
+                        r'\noindent\begingroup\setlength{\fboxsep}{5pt}\colorbox{mist}{\parbox{\dimexpr\linewidth-10pt\relax}{'
+                        + r'\sffamily\fontsize{8.5}{10.8}\selectfont\color{navy}\textbf{FIGURE '
+                        + f'{figure_number:02d}' + r'}\quad ' + prose(item['caption']) + r'}}\endgroup\par\smallskip']
                 markdown += ['![' + item['caption'] + '](outputs/' + item['name'] + '.png)', '']
     (ROOT / 'report.tex').write_text('\n'.join(tex + [r'\end{document}']), encoding='utf-8')
     (ROOT / 'REPORT.md').write_text('\n'.join(markdown), encoding='utf-8')
@@ -146,7 +178,7 @@ def build_notebook(content):
     nbf.write(nb, ROOT / 'final_project.ipynb')
 
 
-def add_text(slide, left, top, width, height, text, size=24, color='18354B', bold=False):
+def add_text(slide, left, top, width, height, text, size=24, color='172F43', bold=False):
     box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
     frame = box.text_frame
     frame.word_wrap = True
@@ -164,6 +196,16 @@ def add_text(slide, left, top, width, height, text, size=24, color='18354B', bol
     return box
 
 
+def add_picture_fit(slide, path, left, top, width, height):
+    picture = slide.shapes.add_picture(str(path), Inches(left), Inches(top), width=Inches(width))
+    if picture.height > Inches(height):
+        picture.width = round(picture.width * Inches(height) / picture.height)
+        picture.height = Inches(height)
+    picture.left = Inches(left) + (Inches(width)-picture.width)//2
+    picture.top = Inches(top) + (Inches(height)-picture.height)//2
+    return picture
+
+
 def build_slides(content):
     prs = Presentation()
     prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
@@ -171,21 +213,23 @@ def build_slides(content):
     for i, item in enumerate(content):
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         slide.background.fill.solid()
-        slide.background.fill.fore_color.rgb = RGBColor.from_string('F4F7F8')
+        slide.background.fill.fore_color.rgb = RGBColor.from_string('FCFBF8')
+        accent = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, prs.slide_width, Inches(.055))
+        accent.fill.solid()
+        accent.fill.fore_color.rgb = RGBColor.from_string('167D8D')
+        accent.line.fill.background()
         add_text(slide, .55, .35, 12.2, .9, item['title'], 32, bold=True)
         if item.get('layout') == 'wide_chart':
             add_text(slide, .60, 1.18, 12.1, .40, item['subtitle'], 20)
-            slide.shapes.add_picture(str(ROOT / 'outputs' / (item['image'] + '.png')),
-                                     Inches(.65), Inches(1.73), width=Inches(12.0))
+            add_picture_fit(slide, ROOT / 'outputs' / (item['image'] + '.png'), .65, 1.73, 12.0, 4.65)
             add_text(slide, .65, 6.55, 12.0, .35, item['caption'], 13)
         else:
             add_text(slide, .58, 1.38, 5.5 if item.get('image') else 11.9, 5.1,
                      '\n'.join(item['points']), 23)
         if item.get('image') and item.get('layout') != 'wide_chart':
-            slide.shapes.add_picture(str(ROOT / 'outputs' / (item['image'] + '.png')),
-                                     Inches(6.2), Inches(1.45), width=Inches(6.6))
+            add_picture_fit(slide, ROOT / 'outputs' / (item['image'] + '.png'), 6.2, 1.45, 6.6, 4.9)
         add_text(slide, .6, 6.98, 11.7, .3,
-                 f'Panagiotis Housos | ph2606   •   As of October 13, 2026   •   {i+1}/{len(content)}', 11)
+                 f'Panagiotis Housos | ph2606   •   As of October 13, 2026   •   {i+1}/{len(content)}', 11, color='657787')
         slide.notes_slide.notes_text_frame.text = item['notes']
         notes += [f"Slide {i+1}: {item['title']}", item['notes'], '']
     prs.save(ROOT / 'Panagiotis_Housos_Final_Project.pptx')
