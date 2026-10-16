@@ -199,6 +199,16 @@ def screen():
     titles.loc[duplicate_ids,'primary_eligible']=False
     titles.loc[duplicate_ids,'primary_exclusion_reason']='duplicate_canonical_title_within_provider_event'
     titles.to_csv(DATA/'provider_bias_titles.csv',index=False)
+    acquisition_path=TABLES/'provider_bias_acquisition.json'
+    if acquisition_path.exists():
+        acquisition=json.loads(acquisition_path.read_text(encoding='utf-8'))
+        # Acquisition records the unscreened draw first. Keep that stage's digest,
+        # but bind input_titles_sha256 to the file that screen() actually saves.
+        acquisition.setdefault('pre_screen_input_titles_sha256',acquisition.get('input_titles_sha256'))
+        acquisition['input_titles_sha256']=media.sha(DATA/'provider_bias_titles.csv')
+        acquisition['input_titles_path']='data/processed/provider_bias_titles.csv'
+        acquisition['input_titles_stage']='after_primary_screen_and_canonicalization'
+        write_json(acquisition_path,acquisition)
     review=titles[titles.primary_eligible][['id','event_id','provider','text','release_date']].copy()
     review.to_csv(DATA/'provider_bias_primary_review.csv',index=False)
     titles[~titles.primary_eligible][['id','event_id','provider','text','primary_exclusion_reason']].to_csv(TABLES/'provider_bias_primary_exclusions.csv',index=False)
@@ -308,7 +318,8 @@ def score():
     cells=cells.merge(single[['provider','event_id','negative']].rename(columns={'negative':'one_hash_title_negative'}),on=['provider','event_id'],validate='one_to_one')
     cells.to_csv(TABLES/'provider_bias_cells.csv',index=False)
     panel,common=choose_common_panel(cells)
-    result=[];details={}
+    result=[];details={'main_providers':[],'common_event_ids':[],
+                       'n_common_events':0,'n_month_clusters':0,'n_main_titles':0}
     if panel:
         selected=cells[cells.provider.isin(panel)&cells.event_id.isin(common)]
         matrix=selected.pivot(index='event_id',columns='provider',values='negative_share').reindex(index=common,columns=panel)
@@ -347,6 +358,11 @@ def score():
           'bootstrap_replicates':REPLICATES,'raw_percentile_interval_contains_estimate':bool(((raw_lower<=estimate)&(raw_upper>=estimate)).all()),
           'plotted_interval_adjustment':'None: raw percentile bounds retained; plot independent interval lines if bounds do not straddle point estimate',
           'event_family_counts':selected.drop_duplicates('event_id').family.value_counts().to_dict()}
+    else:
+        # A failed-support refresh must not leave successful prior-run evidence
+        # alongside a new insufficient-support summary.
+        pd.DataFrame(columns=list(cells.columns)+['relative_negative_pp']).to_csv(TABLES/'provider_bias_common_cells.csv',index=False)
+        pd.DataFrame(columns=['family','provider','bias_pp','n_events']).to_csv(TABLES/'provider_bias_family_sensitivity.csv',index=False)
     for provider,domain in PROVIDERS:
         if provider in panel:continue
         g=cells[cells.provider.eq(provider)]

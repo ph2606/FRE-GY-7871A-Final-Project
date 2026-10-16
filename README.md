@@ -59,13 +59,13 @@ $projectPython = '.\.venv\Scripts\python.exe'
 # Recompute actual observations, test methods, build and execute deliverables.
 & $projectPython scripts/03_analyze.py
 & $projectPython -m src.dynamics
-& $projectPython -m pytest tests -q
 & $projectPython scripts/04_build_deliverables.py
 & $projectPython scripts/05_execute_notebook.py
 xelatex -interaction=nonstopmode -halt-on-error report.tex
 xelatex -interaction=nonstopmode -halt-on-error report.tex
 Copy-Item -LiteralPath report.pdf -Destination Panagiotis_Housos_Final_Project.pdf
-& $projectPython scripts/06_freeze_validate.py
+& $projectPython scripts/06_freeze_validate.py --run-tests
+& $projectPython scripts/07_package_submission.py
 Start-Process -FilePath dashboard.html
 ```
 

@@ -150,14 +150,17 @@ def add_text(slide, left, top, width, height, text, size=24, color='18354B', bol
     box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
     frame = box.text_frame
     frame.word_wrap = True
-    for i, line in enumerate(text.split('\n')):
+    frame.margin_top = Pt(0)
+    frame.margin_bottom = Pt(0)
+    lines = text.split('\n')
+    for i, line in enumerate(lines):
         p = frame.paragraphs[0] if i == 0 else frame.add_paragraph()
         p.text = line
         p.font.name = 'Calibri'
         p.font.size = Pt(size)
         p.font.bold = bold
         p.font.color.rgb = RGBColor.from_string(color)
-        p.space_after = Pt(14)
+        p.space_after = Pt(14 if i < len(lines)-1 else 0)
     return box
 
 
@@ -170,9 +173,15 @@ def build_slides(content):
         slide.background.fill.solid()
         slide.background.fill.fore_color.rgb = RGBColor.from_string('F4F7F8')
         add_text(slide, .55, .35, 12.2, .9, item['title'], 32, bold=True)
-        add_text(slide, .58, 1.38, 5.5 if item.get('image') else 11.9, 5.1,
-                 '\n'.join(item['points']), 23)
-        if item.get('image'):
+        if item.get('layout') == 'wide_chart':
+            add_text(slide, .60, 1.18, 12.1, .40, item['subtitle'], 20)
+            slide.shapes.add_picture(str(ROOT / 'outputs' / (item['image'] + '.png')),
+                                     Inches(.65), Inches(1.73), width=Inches(12.0))
+            add_text(slide, .65, 6.55, 12.0, .35, item['caption'], 13)
+        else:
+            add_text(slide, .58, 1.38, 5.5 if item.get('image') else 11.9, 5.1,
+                     '\n'.join(item['points']), 23)
+        if item.get('image') and item.get('layout') != 'wide_chart':
             slide.shapes.add_picture(str(ROOT / 'outputs' / (item['image'] + '.png')),
                                      Inches(6.2), Inches(1.45), width=Inches(6.6))
         add_text(slide, .6, 6.98, 11.7, .3,
