@@ -200,8 +200,7 @@ def main():
     demographic=json.loads((OUT/'tables/part_b_demography_summary.json').read_text())
     demography=pd.read_csv(ROOT/'data/processed/part_b_demography.csv')
     assert len(demography)==18*34 and demographic['last_year']==2023
-    for source,target in [('part_b_demography_comparison','Reader_Demography_Comparison'),
-                          ('part_b_fertility_trends','Reader_Fertility_Trends'),
+    for source,target in [('part_b_fertility_trends','Reader_Fertility_Trends'),
                           ('reader_ai_learning','Reader_AI_Learning')]:
         blob=(ROOT/f'{target}.png').read_bytes()
         assert blob==(OUT/f'{source}.png').read_bytes()
@@ -212,6 +211,24 @@ def main():
         cells=[c for c in codes if f'{source}.png' in c.source]
         assert len(cells)==1 and any(base64.b64decode(o.get('data',{}).get('image/png',''))==blob
                    for o in cells[0].get('outputs',[])), 'Stale Part B notebook chart'
+    countries=pd.read_csv(ROOT/'data/processed/country_birth_rates_2023.csv')
+    ranked=pd.read_csv(OUT/'tables/country_birth_rates_top100.csv')
+    assert len(ranked)==100 and ranked['rank'].tolist()==list(range(1,101))
+    assert ranked.iso3.nunique()==100 and ranked.year.eq(2023).all()
+    assert ranked.births_per_1000_people.is_monotonic_decreasing
+    assert ranked.iso3.tolist()==countries.head(100).iso3.tolist()
+    combined=ROOT/'Country_Birth_Rates_Top_100.pdf'
+    assert len(PdfReader(combined).pages)==5
+    assert combined.read_bytes()==(OUT/combined.name).read_bytes()
+    for chart in range(1,6):
+        source=f'country_birth_rates_{chart:02d}.png'
+        blob=(ROOT/f'Country_Birth_Rates_{chart:02d}.png').read_bytes()
+        assert blob==(OUT/source).read_bytes()
+        assert any(shape.image.blob==blob for slide in prs.slides for shape in slide.shapes
+                   if shape.shape_type==MSO_SHAPE_TYPE.PICTURE), 'Stale country-ranking slide'
+        cells=[c for c in codes if source in c.source]
+        assert len(cells)==1 and any(base64.b64decode(o.get('data',{}).get('image/png',''))==blob
+                   for o in cells[0].get('outputs',[])), 'Stale country-ranking notebook chart'
     versions = environment_lock()
     inventory = []
     for folder in ['data','outputs']:
@@ -236,6 +253,7 @@ def main():
              f'- Common media assessment: {summary["media_comparison"]["holdout_n"]} months.',
              '- Human-specific annotation requirement: **not satisfied**; AI diagnostics are separately identified.',
              '- October 18 integrated revision: Part B manifesto, primary-source evidence and World Bank fertility/birth-rate exhibits; report page cap explicitly overridden by user.',
+             '- Country birth-rate revision: top100 available 2023 country/economy rates in five descending bar charts, 20 entries each, common zero-based scales; world/region/income aggregates excluded.',
              '- External published human-consensus benchmark: 300 company-news sentences, separate from target-corpus annotation; Cardiff accuracy53.7%, VADER51.0%, with important domain and training-overlap limits.',
              f'- Provider supplement: {len(provider)} providers and {int(provider.n_events.iloc[0])} identical releases; collected retrospectively for the October 15 revision.',
              '- Investing extension: developed retrospectively October 17; 141 monthly allocations, January 2, 2015–October 2, 2026; 10 bp per dollar traded including entry and liquidation.',
@@ -255,7 +273,9 @@ def main():
             'outputs/tables/external_validation_summary.json','docs/EXTERNAL_VALIDATION_PROTOCOL.md',
             'outputs/tables/validation_summary.json','outputs/tables/rubric_evidence_summary.json',
             'outputs/tables/reader_evidence_summary.json','outputs/report_structure.json',
-            'Reader_Demography_Comparison.png','Reader_Demography_Comparison.pdf',
+            'data/processed/country_birth_rates_2023.csv','outputs/tables/country_birth_rates_top100.csv',
+            'outputs/tables/country_birth_rates_summary.json','Country_Birth_Rates_Top_100.pdf',
+            *[f'Country_Birth_Rates_{chart:02d}.png' for chart in range(1,6)],
             'Reader_Fertility_Trends.png','Reader_Fertility_Trends.pdf','Reader_AI_Learning.png','Reader_AI_Learning.pdf',
             'Panagiotis_Housos_Final_Project.pdf','Panagiotis_Housos_Final_Project.pptx','final_project.ipynb','dashboard.html']
     for name in keys:
@@ -276,6 +296,7 @@ def main():
               'bias_trading_months':68,'bias_trading_rules':3,'bias_trading_return_end':'2026-10-02',
               'human_requirement_satisfied':False,'platform':platform.platform(),
               'part_b_integrated':True,'report_page_limit_override':structure['page_limit_override'],
+              'ranked_birth_rate_entries':100,'ranked_birth_rate_charts':5,'ranked_birth_rate_year':2023,
               'native_powerpoint_review_bound':bool(native),'browser_review_bound':bool(browser),
               'python':platform.python_version(),'package_count':len(versions)}
     (OUT/'deliverable_validation.json').write_text(json.dumps(result,indent=2),encoding='utf-8')

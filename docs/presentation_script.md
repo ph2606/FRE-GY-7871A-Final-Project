@@ -31,11 +31,23 @@ We also kept three aggressive ideas using only earlier national-minus-local nega
 Slide 11: Part B / Defend independent judgment
 Part B changes the question: how well can readers check what they encounter? This is a manifesto informed by research, not a finding from our headline data. We should ask for an original source, check the date and explain a claim ourselves. Confident wording is not evidence. The aim is to preserve practiced judgment, whether a story agrees with us or not.
 
-Slide 12: Birth rates do not measure intelligence
-Birth patterns differ greatly across countries and income groups. Fertility is a period estimate of births per woman; the birth rate counts births per thousand people. Age structure also matters. These figures contain no intelligence tests. Historical IQ research finds broad gains, while some countries show reversals. A Norwegian sibling study supports environmental explanations for its rise and fall. Neither those findings nor this chart establishes a worldwide decline caused by which families have children.
+Slide 12: Birth rates in 2023 / Ranks 1-20
+These bars show the highest birth rates in 2023, using the same year for everyone. Forty births per thousand people means about four percent, not forty percent. The World Bank reports countries and economies, including some territories. We exclude regional and income aggregates. Read down the left panel, then down the right. The next four charts continue the ranking through one hundred.
 
-Slide 13: AI design can change what students learn
+Slide 13: Birth rates in 2023 / Ranks 21-40
+This chart continues ranks 21 through 40, still highest to lowest. The scale is unchanged, so bar lengths can be compared directly with the other pages. The printed numbers are births per thousand people.
+
+Slide 14: Birth rates in 2023 / Ranks 41-60
+This chart continues ranks 41 through 60, still highest to lowest. The scale is unchanged, so bar lengths can be compared directly with the other pages. The printed numbers are births per thousand people.
+
+Slide 15: Birth rates in 2023 / Ranks 61-80
+This chart continues ranks 61 through 80, still highest to lowest. The scale is unchanged, so bar lengths can be compared directly with the other pages. The printed numbers are births per thousand people.
+
+Slide 16: Birth rates in 2023 / Ranks 81-100
+This final chart completes ranks eighty-one through one hundred. It uses the same scale as the first chart. Birth rates describe population patterns; they do not measure intelligence or explain individual family decisions.
+
+Slide 17: AI design can change what students learn
 In a Turkish school experiment, a standard AI assistant improved practice but reduced later unaided test performance by about five score points compared with no AI. A tutor giving teacher-informed hints largely avoided that penalty. The study concerns short-term mathematics learning, not permanent IQ. It suggests a practical question: does a tool help us understand, or only finish? Measure unaided reasoning as well as assisted output.
 
-Slide 14: Make the manifesto testable
+Slide 18: Make the manifesto testable
 Faster turnover of popular topics is not proof that every person has a shorter attention span. Experiments also show that reminders about accuracy can improve what people intend to share. We propose testing a source-and-date prompt on new economic claims one week later, without AI. A precise null would challenge the manifesto. For finance, verify a story before changing a forecast. Our aggressive trading ideas did not beat ordinary stocks; this argument does not turn them into proven profit.

@@ -21,6 +21,7 @@ from src.annotation_packet import build as build_human_packet
 from src.reader_evidence import build as build_reader_evidence
 from src.part_b_demography import build as build_demography
 from src.rubric_evidence import build as build_rubric_evidence
+from src.country_birth_rates import build as build_country_birth_rates
 
 
 def esc(value):
@@ -153,13 +154,13 @@ def build_notebook(content):
     input_paths = ['data/processed/monthly_dataset.csv','data/processed/media_monthly.csv',
                    'outputs/tables/provider_bias.csv','data/processed/investment_prices.csv',
                    'data/processed/media_scores.csv','data/processed/bias_trading_prices.csv',
-                   'data/processed/part_b_demography.csv']
+                   'data/processed/part_b_demography.csv','data/processed/country_birth_rates_2023.csv']
     expected_inputs = {name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
                        for name in input_paths if (ROOT/name).exists()}
     cells = [nbf.v4.new_markdown_cell('# Economic narratives and consumer sentiment\n\n**Panagiotis Housos | ph2606 | AI Applications in Finance | Final Project**\n\nInformation cutoff: October 13, 2026. Human validation is not completed; independent AI reviews are explicitly separate. Acquisition and model scoring run separately. The cells below rerun analysis from local frozen inputs. Raw datasets are excluded from Git under the established submission policy.'),
              nbf.v4.new_code_cell("from pathlib import Path\nimport json\nimport hashlib\nimport pandas as pd\nfrom IPython.display import display, Image\nROOT = Path.cwd()\nassert (ROOT / 'src/economics.py').exists(), 'Execute from the project root.'\nexpected_inputs = " + repr(expected_inputs) + "\nfor name, expected in expected_inputs.items():\n    path = ROOT / name\n    assert path.exists(), f'Acquire required input: {name}'\n    assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, f'Input changed: {name}. Rerun analysis and rebuild deliverables before executing this notebook.'\npd.set_option('display.max_columns', 14)\npd.set_option('display.max_colwidth', 70)\npd.set_option('display.precision', 4)"),
              nbf.v4.new_markdown_cell('## Recompute the frozen empirical analysis\n\nThe economic feature matrix uses historical ALFRED snapshots. Media reconstruction is retrospective and subject to source selection and original-wording limitations. The package never invents missing records, exposure or human labels.'),
-             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics'], ['-m', 'src.investing', 'analyze'], ['-m', 'src.bias_trading', 'analyze'], ['scripts/08_validation_tables.py'], ['-m','src.external_validation','score'], ['-m','src.rubric_evidence'], ['-m','src.part_b_demography','build'], ['-m','src.reader_evidence']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary study and separately identified extensions recalculated from frozen inputs.')")]
+             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics'], ['-m', 'src.investing', 'analyze'], ['-m', 'src.bias_trading', 'analyze'], ['scripts/08_validation_tables.py'], ['-m','src.external_validation','score'], ['-m','src.rubric_evidence'], ['-m','src.part_b_demography','build'], ['-m','src.reader_evidence'], ['-m','src.country_birth_rates','build']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary study and separately identified extensions recalculated from frozen inputs.')")]
     cells += [nbf.v4.new_markdown_cell('## Persistence and differenced-model sensitivity\n\nThese checks were added after the primary analysis and are exploratory. ADF and KPSS have different null hypotheses; structural breaks limit either interpretation. The differenced models use the same 44 test months and a separately identified two-contrast loss-test family.'),
               nbf.v4.new_code_cell("display(pd.read_csv(ROOT / 'outputs/tables/dynamics_unit_root.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_differenced_metrics.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_loss_hac.csv'))")]
     cells += [nbf.v4.new_markdown_cell('## Independent AI diagnostic: class and source concordance\n\nThese are AI development references, not human ground truth. The original pool has 300 items; final-corpus eligibility and mixed/uncertain exclusions are explicit. Small source/class cells have unstable estimates. Required human validation remains pending.'),
@@ -171,7 +172,7 @@ def build_notebook(content):
               nbf.v4.new_markdown_cell('## Statistical evidence and prospective power\n\nFull-history coefficient associations, chronological forecast comparisons and sample-size planning are different estimands. The planned experiment has not been run.'),
               nbf.v4.new_code_cell("for name in ['loss_contrasts','tone_associations','survey_components','economic_sensitivities','media_sensitivities','dynamic_sensitivities','forecast_skill','power_plan']:\n    print(name)\n    display(pd.read_csv(ROOT/('outputs/tables/rubric_'+name+'.csv')))"),
               nbf.v4.new_markdown_cell('## Part B source data and published summaries\n\nDemography measures births, not cognition. The AI learning chart transcribes published regression summaries; it is not a new participant-level analysis. The manifesto is an argument distinct from Part A estimates.'),
-              nbf.v4.new_code_cell("display(pd.read_csv(ROOT/'outputs/tables/part_b_demography_comparison.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_ai_published_effects.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_attention_published.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_evidence_sources.csv'))")]
+              nbf.v4.new_code_cell("display(pd.read_csv(ROOT/'outputs/tables/part_b_demography_comparison.csv'))\nwith pd.option_context('display.max_rows', 100):\n    display(pd.read_csv(ROOT/'outputs/tables/country_birth_rates_top100.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_ai_published_effects.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_attention_published.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_evidence_sources.csv'))")]
     if (ROOT/'outputs/tables/provider_bias.csv').exists():
         cells += [nbf.v4.new_markdown_cell('## News-provider comparison: matched official releases\n\nA separate supplemental sample includes CNBC and Fox brands. The provider bars use a common set of releases and a defined peer reference. This is a relative negative-framing proxy, not a factual or ideological rating. The original forecast corpus and 300-title AI review remain separate; the new providers do not have independent human validation.'),
                   nbf.v4.new_code_cell("provider_table = pd.read_csv(ROOT / 'outputs/tables/provider_bias.csv')\ndisplay(provider_table)\nprovider_summary = json.loads((ROOT / 'outputs/tables/provider_bias_summary.json').read_text())\ndisplay(pd.Series(provider_summary, name='provider_comparison_protocol'))")]
@@ -281,6 +282,7 @@ if __name__ == '__main__':
     build_reader_evidence()
     build_demography()
     build_rubric_evidence()
+    build_country_birth_rates()
     content = sections()
     assert len(content) > 12 and any(title.startswith('Part B') for title,_ in content)
     build_report(content)
@@ -294,9 +296,12 @@ if __name__ == '__main__':
     shutil.copyfile(ROOT/'outputs/investment_strategy.pdf',ROOT/'Investment_Strategy_Comparison.pdf')
     shutil.copyfile(ROOT/'outputs/bias_trading.png',ROOT/'Bias_Trading_Comparison.png')
     shutil.copyfile(ROOT/'outputs/bias_trading.pdf',ROOT/'Bias_Trading_Comparison.pdf')
-    for source, target in [('part_b_demography_comparison','Reader_Demography_Comparison'),
-                           ('part_b_fertility_trends','Reader_Fertility_Trends'),
+    for source, target in [('part_b_fertility_trends','Reader_Fertility_Trends'),
                            ('reader_ai_learning','Reader_AI_Learning')]:
         for extension in ['png','pdf']:
             shutil.copyfile(ROOT/'outputs'/f'{source}.{extension}',ROOT/f'{target}.{extension}')
+    for chart in range(1,6):
+        shutil.copyfile(ROOT/'outputs'/f'country_birth_rates_{chart:02d}.png',
+                        ROOT/f'Country_Birth_Rates_{chart:02d}.png')
+    shutil.copyfile(ROOT/'outputs/Country_Birth_Rates_Top_100.pdf',ROOT/'Country_Birth_Rates_Top_100.pdf')
     print(f'Built {len(content)}-section integrated report source, notebook, dashboard and presentation.')

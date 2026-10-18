@@ -26,12 +26,23 @@ def sections(p, table, figure, fmt):
         p('The Icelandic study is relevant evidence for a narrower concern about selection: it examines reproductive histories of 109,120 people and finds a change in an education-related genetic score across birth cohorts. That score captures only part of a complex trait in a particular population and setting. It is not a measurement of every child\'s intelligence, nor a license to project country fertility differences into a worldwide cognitive collapse. [Kong et al., 2017](https://doi.org/10.1073/pnas.1612113114).'),
         p('The defensible conclusion is that some measured cognitive performances can decline under particular conditions. The stronger claim that world IQ keeps falling is not established by this evidence. Evolution describes changes in populations, without a universal ladder from worse to better. A loss of learning or critical-thinking habits would be a serious social problem even without a demonstrated evolutionary reversal. [UC Berkeley](https://evolution.berkeley.edu/evolution-101/the-big-issues/trends-in-evolution/).'),
         p('Other primary sources: [Pietschnig and Voracek, 2015](https://doi.org/10.1177/1745691615577701); [Mani et al., 2013](https://doi.org/10.1126/science.1238041). The latter supports a situational pathway, not a universal estimate of poverty\'s effect or a claim about innate ability.')]))
-    pages.append(('B2. Compare births carefully, without inferring IQ', [
-        p('The next exhibit compares 1990 with one common historical endpoint, 2023, using a frozen World Bank download. It includes Western countries, countries in Asia and Africa, and the world; the following page adds income aggregates. These selected examples show variation; they are not a random country sample. Income labels describe economic groupings, not ability. The phrase "third world" would obscure these distinctions.'),
-        figure('part_b_demography_comparison', 'Two different measures of births, 1990 versus 2023, from the same World Bank snapshot. Hollow points show 1990; filled points and printed values show 2023. Neither panel measures IQ. The download record, definitions and full 1990-2023 table remain local.', height='310pt'),
-        p('**Total fertility rate** means the number of births a woman would have if that year\'s age-specific birth rates continued through her childbearing years. It is a period calculation, not the actual completed family size of every woman. **Crude birth rate** means births in a year per 1,000 people. It also depends on a population\'s age structure, so two places can have similar fertility rates and different crude birth rates.'),
-        p('A national average cannot establish that people who score lower on an intelligence test have more children. That would require individual-level cognitive measures, reproductive histories, comparable testing and careful treatment of health, education, resources and opportunity. Inferring an individual relationship from country averages is called an ecological fallacy.'),
-        p('Sources: [World Bank fertility indicator and sources](https://data.worldbank.org/indicator/SP.DYN.TFRT.IN); [World Bank crude birth-rate indicator](https://data.worldbank.org/indicator/SP.DYN.CBRT.IN). These are historical estimates as downloaded in October 2026, not a projection of future births or cognition.')]))
+    ranking=pd.read_csv(ROOT/'outputs/tables/country_birth_rates_top100.csv')
+    assert len(ranking)==100 and ranking['rank'].tolist()==list(range(1,101))
+    for chart in range(5):
+        start,stop=20*chart+1,20*(chart+1)
+        items=[]
+        if chart==0:
+            items.append(p('These five bar charts show the 100 highest available **birth rates in 2023**, in descending order. Every entry uses the same year and every chart uses the same horizontal scale starting at zero. The World Bank reports countries and economies, including some separately reported territories. Regional, world and income-group aggregates are excluded; missing observations are not assigned zero.'))
+        else:
+            items.append(p(f'The descending ranking continues with places {start}-{stop}. Read the left panel from top to bottom, then the right panel. The global rank is printed beside each name; all five charts use the same scale.'))
+        items.append(figure(f'country_birth_rates_{chart+1:02d}',
+            f'Ranks {start}-{stop} of the 100 highest reported 2023 country/economy birth rates. Bars show annual births per 1,000 people, not total births. Values are rounded for display; ranking uses unrounded observations. Source: World Bank WDI, SP.DYN.CBRT.IN.',width='1.00',height='360pt'))
+        if chart==0:
+            items += [p('**How to read a bar.** A rate of 40 means about 40 births in one year for every 1,000 people: about 4%, not 40%. Population age structure affects this measure. It differs from **total fertility rate**, the period estimate of births per woman used in the following income-group chart.'),
+                      p('The ranking describes births, not intelligence or individual behavior. A country average cannot show why particular people have children. The figures are historical estimates from the October 2026 download, not forecasts. [World Bank definition and source data](https://data.worldbank.org/indicator/SP.DYN.CBRT.IN).')]
+        else:
+            items.append(p('A longer bar means more births relative to population size, not necessarily more births in total. Country/economy coverage follows World Bank reporting; it is not a claim that every listed entry is a sovereign state. [Indicator definition and sources](https://data.worldbank.org/indicator/SP.DYN.CBRT.IN).'))
+        pages.append((f'B2.{chart+1} Birth rates / Ranks {start}-{stop}',items))
     pages.append(('B3. Financial security and the next generation', [
         figure('part_b_fertility_trends', 'Annual period fertility, 1990-2023. The world and income aggregates are population-level summaries using the World Bank grouping in this snapshot; classifications can change. These lines measure births per woman, not intelligence or completed family sizes.', height='225pt'),
         p('Economic planning before parenthood is a real concern, but it cannot be assigned only to an allegedly smarter class. UNFPA\'s 2025 survey across 14 countries found financial limits were commonly reported as obstacles to the desired family size. Its reported 39% is a survey summary across those countries, not a census of all adults worldwide. The question concerns constraints and aspirations, not IQ. [UNFPA, State of World Population 2025](https://www.unfpa.org/swp2025).'),
@@ -63,7 +74,7 @@ def sections(p, table, figure, fmt):
 
 
 def slides():
-    return [
+    deck = [
         {'title': 'Part B / Defend independent judgment',
          'points': ['A manifesto: what we should value and do', 'Ask: where is the evidence, date and original source?', 'Use AI to practice reasoning and checking', 'Part A did not measure readers\' abilities'],
          'notes': 'Part B changes the question: how well can readers check what they encounter? This is a manifesto informed by research, not a finding from our headline data. We should ask for an original source, check the date and explain a claim ourselves. Confident wording is not evidence. The aim is to preserve practiced judgment, whether a story agrees with us or not.'},
@@ -83,3 +94,18 @@ def slides():
          'points': ['Faster topic turnover is not an individual attention test', 'Accuracy prompts can improve sharing decisions', 'Test checking skills on new claims, one week later', 'Financial conclusion: verify narratives before acting'],
          'notes': 'Faster turnover of popular topics is not proof that every person has a shorter attention span. Experiments also show that reminders about accuracy can improve what people intend to share. We propose testing a source-and-date prompt on new economic claims one week later, without AI. A precise null would challenge the manifesto. For finance, verify a story before changing a forecast. Our aggressive trading ideas did not beat ordinary stocks; this argument does not turn them into proven profit.'},
     ]
+    ranked=[]
+    for chart in range(5):
+        first,last=chart*20+1,(chart+1)*20
+        if chart==0:
+            notes='These bars show the highest birth rates in 2023, using the same year for everyone. Forty births per thousand people means about four percent, not forty percent. The World Bank reports countries and economies, including some territories. We exclude regional and income aggregates. Read down the left panel, then down the right. The next four charts continue the ranking through one hundred.'
+        elif chart==4:
+            notes='This final chart completes ranks eighty-one through one hundred. It uses the same scale as the first chart. Birth rates describe population patterns; they do not measure intelligence or explain individual family decisions.'
+        else:
+            notes=f'This chart continues ranks {first} through {last}, still highest to lowest. The scale is unchanged, so bar lengths can be compared directly with the other pages. The printed numbers are births per thousand people.'
+        ranked.append({'title':f'Birth rates in 2023 / Ranks {first}-{last}',
+                       'layout':'wide_chart','subtitle':'Top 100 | Births per 1,000 people | World Bank countries and economies',
+                       'image':f'country_birth_rates_{chart+1:02d}',
+                       'caption':'Read down the left panel, then down the right. Identical zero-based scales across all five charts; aggregates excluded.',
+                       'points':[],'notes':notes})
+    return deck[:1]+ranked+deck[2:]

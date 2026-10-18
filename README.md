@@ -4,6 +4,8 @@ Panagiotis Housos | ph2606 | AI Applications in Finance | Fall 2026
 
 This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The economic information cutoff is **October 13, 2026**, America/New_York. The October 15 revision adds a provider comparison; October 17 adds investment experiments. The **October 18 integrated revision** strengthens statistical uncertainty and validation, adds a separate published human-consensus benchmark, and integrates **Part B: a manifesto for independent judgment** with primary research and World Bank demographic charts. Open [the executed notebook](final_project.ipynb) for computed tables and exhibits. Local deliverables include the extended PDF, standalone interactive dashboard, provider graph and narrated PowerPoint. The report exceeds the original page limit at the user's explicit request; the presentation keeps the 6–8 minute target.
 
+The revised country charts show the **100 highest available 2023 crude birth rates**, descending across five charts of 20 entries. Each chart has two panels of 10 and the same zero-based scale. Rates are annual births per 1,000 people, not births per woman or total births. World Bank country/economy coverage includes separately reported territories; regional and income aggregates are excluded. The report, presentation, notebook, five PNGs and standalone five-page `Country_Birth_Rates_Top_100.pdf` use the same ranking.
+
 People can feel worse about the economy than official numbers suggest. This project asks whether selected news wording helps explain that difference, then tests three aggressive trading ideas using the wording alone. The economic-model answer changes when we account for persistent survey scores and changes in survey methods. The news measure does not reliably improve forecasts. Two wording-only trading rules make a historical profit after assumed costs, but all three finish below an ordinary S&P 500 fund and suffer larger worst percentage losses. These findings do not prove that news caused people's feelings or establish a reliable way to earn future profits.
 
 **A quick vocabulary guide:** a survey asks people questions; an index combines answers into a score, not a dollar amount or a percentage of unhappy people. A forecast is a model's estimate. The sentiment gap is actual score minus model estimate. A percentage point is the difference between percentages: 40% minus 30% is 10 percentage points. The trading experiment's **wording gap** is a different measure: how much more often selected national headlines are labeled negative than one local outlet's headlines. Negative news can be accurate. The dashboard explains these terms before its charts and gives plain-language examples of the fund choices and losses.
@@ -102,6 +104,7 @@ $projectPython = '.\.venv\Scripts\python.exe'
 & $projectPython -m src.external_validation prepare
 & $projectPython -m src.external_validation score
 & $projectPython -m src.part_b_demography all
+& $projectPython -m src.country_birth_rates all
 & $projectPython -m src.reader_evidence
 & $projectPython -m src.rubric_evidence
 & $projectPython scripts/04_build_deliverables.py

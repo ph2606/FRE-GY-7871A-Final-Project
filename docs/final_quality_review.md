@@ -4,11 +4,11 @@ The economic information cutoff remains October 13, 2026. Provider headlines wer
 
 ## Deliverables and readability
 
-- The integrated report has 23 pages:15 for the empirical study, 6 for Part B, and 2 trading appendices. The user explicitly instructed integrating Part B and disregarding the original 10-12 page cap. The original grading requirement remains recorded in the requirements audit.
-- The 14-slide presentation has 890 speaker-note words, about 6.4 minutes at 140 words per minute. Microsoft PowerPoint rendered all slides without text overflow; the saved validation record is bound to the reviewed PPTX hash.
-- The report uses vector figures, consistent typography, plain definitions, worked examples, linked primary sources, explicit cohorts and a labeled evidence/inference/manifesto distinction. XeLaTeX reports zero overfull boxes and exactly 23 pages, with no orphaned extra page.
-- All 43 notebook code cells executed with zero recorded errors. Every report figure is displayed in the executed notebook. The dashboard has ten unique charts and 30 main SVG layers; browser execution reported no runtime exceptions and its record is bound to the current HTML hash.
-- Three original Part B charts are exported as standalone PNG and PDF. The report-builder and separate notebook processes now produce identical bytes for all six assets. Three regression tests detect and prevent inherited plotting-style changes; temporarily disabling the reset in memory reproduces all three failures.
+- The integrated report has 27 pages: 15 for the empirical study, 10 for Part B, and 2 trading appendices. The user explicitly instructed integrating Part B and disregarding the original 10-12 page cap. The original grading requirement remains recorded in the requirements audit.
+- The 18-slide presentation has 1,012 speaker-note words, about 7.2 minutes at 140 words per minute. Microsoft PowerPoint rendered all slides without text overflow; the saved validation record is bound to the reviewed PPTX hash.
+- The report uses vector figures, consistent typography, plain definitions, worked examples, linked primary sources, explicit cohorts and a labeled evidence/inference/manifesto distinction. XeLaTeX reports zero overfull boxes and exactly 27 pages, with no orphaned extra page.
+- All 47 notebook code cells executed with zero recorded errors. Every report figure is displayed in the executed notebook. The dashboard has ten unique charts and 30 main SVG layers; browser execution reported no runtime exceptions and its record is bound to the current HTML hash.
+- The country comparison now uses five descending bar charts, covering 100 entries in two panels of 10 per chart, with identical zero-based scales. Five PNGs and a combined five-page PDF are exported. The other Part B exhibits retain the fertility trend and AI-learning chart. Report-builder and notebook copies are checked against the same frozen assets. Three regression tests detect and prevent inherited plotting-style changes; temporarily disabling the reset in memory reproduces all three failures.
 
 ## Grading evidence strengthened
 

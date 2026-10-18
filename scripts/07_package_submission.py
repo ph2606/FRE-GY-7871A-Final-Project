@@ -22,8 +22,12 @@ ASSETS = (
     'Investment_Strategy_Comparison.pdf',
     'Bias_Trading_Comparison.png',
     'Bias_Trading_Comparison.pdf',
-    'Reader_Demography_Comparison.png',
-    'Reader_Demography_Comparison.pdf',
+    'Country_Birth_Rates_Top_100.pdf',
+    'Country_Birth_Rates_01.png',
+    'Country_Birth_Rates_02.png',
+    'Country_Birth_Rates_03.png',
+    'Country_Birth_Rates_04.png',
+    'Country_Birth_Rates_05.png',
     'Reader_Fertility_Trends.png',
     'Reader_Fertility_Trends.pdf',
     'Reader_AI_Learning.png',
@@ -107,8 +111,10 @@ Contents:
 - `Provider_Bias_Comparison.png` and `.pdf`: standalone provider comparison figure.
 - `Investment_Strategy_Comparison.png` and `.pdf`: net wealth comparison.
 - `Bias_Trading_Comparison.png` and `.pdf`: three aggressive news-only experiments.
-- `Reader_Demography_Comparison`, `Reader_Fertility_Trends`, `Reader_AI_Learning`
-  in PNG/PDF: original Part B charts with sources and interpretation boundaries.
+- `Country_Birth_Rates_Top_100.pdf`: five ranked bar charts, 20 entries per chart,
+  with separate `Country_Birth_Rates_01.png` through `05.png` image exports.
+- `Reader_Fertility_Trends` and `Reader_AI_Learning` in PNG/PDF:
+  other original Part B charts with sources and interpretation boundaries.
 - `final_project.ipynb`: executed notebook with {validation['notebook_code_cells']}
   code cells and {validation['notebook_errors']} recorded errors.
 - {source_count} tracked source/documentation files, including the notebook,

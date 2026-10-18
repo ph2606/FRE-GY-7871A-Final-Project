@@ -56,3 +56,7 @@ UPRO and SPXU target **daily** moves. If the index rises 1% in a day, their targ
 | Human validation | People independently checking labels; the assignment's two-person requirement remains unmet |
 
 The extended report first presents the empirical study, then Part B's manifesto and evidence review, followed by trading appendices. The presentation covers both parts within the original 6–8 minute target. A manifesto states values and proposals; it is not a new finding from the headline dataset. Fertility measures births, not intelligence; short-term test performance and IQ are different. The notebook preserves calculations, all strategies and benchmarks, uncertainty checks and the external human-consensus stress test. The target-corpus two-human requirement remains incomplete.
+
+## Reading the 100-country bar charts
+
+The five charts continue from rank 1 through rank 100, highest to lowest. Read down the left panel, then down the right; each chart contains 20 entries. The common horizontal scale starts at zero. A value of 40 means 40 births in a year per 1,000 people, or about 4%; it does not mean 40 children per woman. These 2023 World Bank figures cover countries and economies, including some territories, and exclude world/regional/income aggregates. Many lower-birth-rate economies lie outside the highest 100. The standalone five-page PDF contains all charts at full size.
