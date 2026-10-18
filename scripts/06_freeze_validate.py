@@ -103,9 +103,9 @@ def main():
     assert 6 <= words/140 <= 8, f'Narration duration {words/140:.2f} minutes'
     html = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
     assert 'Plotly.newPlot' in html and 'Human validation outstanding' in html
-    assert 'Relative negative framing' in html and 'CNBC' in html and 'Fox News' in html
+    assert 'Extra negative titles' in html and 'CNBC' in html and 'Fox News' in html
     chart_ids = re.findall(r'<div id="(chart-\d+)"', html)
-    assert len(chart_ids) == len(set(chart_ids)) == 9, 'Missing or duplicated dashboard charts'
+    assert len(chart_ids) == len(set(chart_ids)) == 10, 'Missing or duplicated dashboard charts'
     provider=pd.read_csv(OUT/'tables/provider_bias.csv')
     if 'comparison_status' in provider:
         provider=provider.loc[provider.comparison_status.eq('main_common_event_panel')]
@@ -136,14 +136,34 @@ def main():
         assert sha(ROOT/name)==digest_value, 'Stale investment input: '+name
     signals=pd.read_csv(ROOT/'data/processed/investment_signals.csv',parse_dates=['month','execution_date','trend_reference_month'])
     assert (signals.execution_date>signals.month).all() and (signals.trend_reference_month<signals.month).all()
-    assert '60%' in report_text and 'SPY' in report_text and 'BIL' in report_text
+    assert 'SPY' in report_text and 'BIL' in report_text
     strategy_image=(ROOT/'Investment_Strategy_Comparison.png').read_bytes()
     assert strategy_image==(OUT/'investment_strategy.png').read_bytes()
-    assert any(shape.image.blob==strategy_image for slide in prs.slides for shape in slide.shapes
-               if shape.shape_type==MSO_SHAPE_TYPE.PICTURE), 'Stale investment chart in slides'
     strategy_cells=[c for c in codes if 'investment_strategy.png' in c.source]
     assert len(strategy_cells)==1 and any(base64.b64decode(o.get('data',{}).get('image/png',''))==strategy_image
                for o in strategy_cells[0].get('outputs',[])), 'Stale investment chart in notebook'
+    bias=json.loads((OUT/'tables/bias_trading_summary.json').read_text(encoding='utf-8'))
+    assert bias['allocation_periods']==68 and bias['cost_bps']==10 and bias['entry_and_liquidation_included']
+    assert bias['protocol_sha256']==sha(ROOT/'docs/BIAS_TRADING_PROTOCOL.md')
+    assert all(row['protocol_sha256_before_performance']==bias['protocol_sha256']
+               for row in bias['acquisition']['sources'])
+    assert bias['script_sha256']==sha(ROOT/'src/bias_trading.py')
+    assert bias['signal_script_sha256']==sha(ROOT/'src/bias_signal.py')
+    for name,digest_value in bias['hashes'].items():assert sha(ROOT/name)==digest_value,name
+    assert all(row['start']=='2021-02-02' and row['end']=='2026-10-02' for row in bias['full_metrics'])
+    assert len(bias['tests_vs_spy'])==3 and all('holm_pvalue' in row for row in bias['tests_vs_spy'])
+    bias_signals=pd.read_csv(ROOT/'data/processed/bias_trading_signals.csv',parse_dates=['month','signal_month','execution_date'])
+    assert (bias_signals.signal_month<bias_signals.month).all() and (bias_signals.execution_date>bias_signals.month).all()
+    assert bias_signals.baseline_n.eq(12).all()
+    assert all(set(bias_signals[model])<={'UPRO','SPXU','BIL'} for model in bias['rule_names'])
+    assert all(term in report_text for term in ['UPRO','SPXU','Fade','Follow','Wait'])
+    bias_image=(ROOT/'Bias_Trading_Comparison.png').read_bytes()
+    assert bias_image==(OUT/'bias_trading.png').read_bytes()
+    assert any(shape.image.blob==bias_image for slide in prs.slides for shape in slide.shapes
+               if shape.shape_type==MSO_SHAPE_TYPE.PICTURE), 'Stale news-only chart in slides'
+    bias_cells=[c for c in codes if 'bias_trading.png' in c.source]
+    assert len(bias_cells)==1 and any(base64.b64decode(o.get('data',{}).get('image/png',''))==bias_image
+               for o in bias_cells[0].get('outputs',[])), 'Stale news-only chart in notebook'
     panel=pd.read_csv(ROOT/'data/processed/monthly_dataset.csv')
     assert panel.loc[panel.month>'2026-09-01','sentiment'].isna().all(), 'Final target published after cutoff'
     metrics = pd.read_csv(OUT/'tables/model_metrics.csv')
@@ -183,6 +203,7 @@ def main():
              f'- Provider supplement: {len(provider)} providers and {int(provider.n_events.iloc[0])} identical releases; collected retrospectively for the October 15 revision.',
              '- Investing extension: developed retrospectively October 17; 141 monthly allocations, January 2, 2015–October 2, 2026; 10 bp per dollar traded including entry and liquidation.',
              '- The 60% SPY / 40% BIL benchmark is preferred after the comparison; positive historical profit is not demonstrated media alpha or a promise of future profit.',
+             '- Final plain-language revision adds three news-framing-only strategies using observed +3x/-3x daily funds, 68 monthly decisions and all six same-date benchmarks; no guaranteed bias advantage is claimed.',
              '', '| Artifact / key input | SHA-256 |', '| --- | --- |']
     keys = ['data/processed/monthly_dataset.csv','data/processed/media_corpus.csv','data/processed/media_scores.csv',
             'data/processed/media_monthly.csv','outputs/tables/forecasts.csv','outputs/tables/model_metrics.csv',
@@ -190,6 +211,9 @@ def main():
             'outputs/tables/provider_bias.csv','outputs/tables/provider_bias_summary.json','Provider_Bias_Comparison.png','Provider_Bias_Comparison.pdf',
             'data/processed/investment_prices.csv','data/processed/investment_signals.csv','outputs/tables/investment_metrics.csv',
             'outputs/tables/investment_summary.json','docs/INVESTMENT_PROTOCOL.md','Investment_Strategy_Comparison.png','Investment_Strategy_Comparison.pdf',
+            'data/processed/bias_trading_prices.csv','data/processed/bias_trading_monthly.csv','data/processed/bias_trading_signals.csv',
+            'outputs/tables/bias_trading_metrics.csv','outputs/tables/bias_trading_summary.json','docs/BIAS_TRADING_PROTOCOL.md',
+            'Bias_Trading_Comparison.png','Bias_Trading_Comparison.pdf',
             'Panagiotis_Housos_Final_Project.pdf','Panagiotis_Housos_Final_Project.pptx','final_project.ipynb','dashboard.html']
     for name in keys:
         path = ROOT/name
@@ -206,6 +230,7 @@ def main():
               'tests_passed':tests['passed'],'dashboard_charts':len(chart_ids),
               'investment_allocation_months':141,'investment_return_end':'2026-10-02',
               'investment_cost_bps':10,'preferred_allocation':'60% SPY / 40% BIL; retrospective preference',
+              'bias_trading_months':68,'bias_trading_rules':3,'bias_trading_return_end':'2026-10-02',
               'human_requirement_satisfied':False,'platform':platform.platform(),
               'python':platform.python_version(),'package_count':len(versions)}
     (OUT/'deliverable_validation.json').write_text(json.dumps(result,indent=2),encoding='utf-8')

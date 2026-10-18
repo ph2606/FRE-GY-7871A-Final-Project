@@ -53,11 +53,12 @@ def table_html(df, limit=25):
     if df.empty:
         return '<p class="muted">Unavailable in this snapshot.</p>'
     display = df.head(limit).copy()
-    labels = {'provider':'Provider','bias_pp':'Relative negativity · pp',
+    labels = {'provider':'News provider','bias_pp':'Extra negative titles · percentage points',
               'lower_95':'Range · lower','upper_95':'Range · upper','n_titles':'Titles',
               'n_events':'Releases','comparison_status':'Comparison status','model':'Model',
               'n':'Months','start':'First month','end':'Last month','rmse':'RMSE','mae':'MAE',
-              'coverage_95':'Approx. 95% coverage','empirical_coverage_95':'Empirical 95% coverage'}
+              'coverage_95':'Actual values inside approximate range',
+              'empirical_coverage_95':'Actual values inside error-based range'}
     for column in ['coverage_95','empirical_coverage_95']:
         if column in display:
             display[column] = display[column].map(lambda value:f'{100*value:.1f}%' if pd.notna(value) else 'Unavailable')
@@ -74,7 +75,7 @@ def date_axes(fig):
 def media_tone_figure(monthly):
     """Keep signed tone and negative-class shares on separate, labeled scales."""
     fig = make_subplots(rows=1,cols=2,horizontal_spacing=.12,column_widths=[.6,.4],
-                        subplot_titles=['Directional wording · signed score','Titles classified negative · share'])
+                        subplot_titles=['Positive minus negative wording','Titles the program labels negative'])
     tone_specs = [('media_tone','Overall tone',TEAL,True,'solid'),
                   ('national_tone','National tone',NAVY,'legendonly','solid'),
                   ('local_tone','Local tone',SLATE,'legendonly','solid'),
@@ -95,7 +96,7 @@ def media_tone_figure(monthly):
                                     hovertemplate=label+': %{y:.3f}<extra></extra>'),row=1,col=column)
     style(fig,'Media wording, with the scales kept separate',480)
     fig.add_hline(y=0,line_color='#A8B8C2',line_width=.8,row=1,col=1)
-    fig.update_yaxes(title_text='P(positive) − P(negative)',rangemode='tozero',row=1,col=1)
+    fig.update_yaxes(title_text='Wording score · −1 to +1',rangemode='tozero',row=1,col=1)
     fig.update_yaxes(title_text='Share of sampled titles',tickformat='.0%',range=[0,1],row=1,col=2)
     date_axes(fig)
     fig.update_layout(legend={'y':-.23,'font':{'size':10}},margin={'b':128})
@@ -173,6 +174,57 @@ def investment_strategy_figure(daily):
     return date_axes(fig)
 
 
+BIAS_DISPLAY = [
+    ('Fade_gap','Fade the gap',TEAL,2.6,'solid'),
+    ('Follow_gap','Follow the gap',RED,2.2,'solid'),
+    ('Wait_turn','Wait for a turn',SLATE,2.2,'dash'),
+    ('SPY_hold','S&P 500 fund · SPY',NAVY,2.4,'solid'),
+]
+
+
+def bias_trading_figure(daily):
+    """Display the saved four comparison paths; all choices were made upstream."""
+    fig=go.Figure()
+    for model,label,color,width,dash in BIAS_DISPLAY:
+        selected=daily.loc[daily.model.eq(model)].sort_values('date')
+        if selected.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=selected.date,y=100*selected.wealth,name=label,
+            line={'color':color,'width':width,'dash':dash},
+            customdata=selected[['drawdown']].to_numpy(),
+            hovertemplate=label+'<br>Account from an initial $100: $%{y:.2f}'
+                          '<br>Below its earlier high: %{customdata[0]:.1%}<extra></extra>'))
+    fig.add_hline(y=100,line_color='#A8B8C2',line_width=.8,line_dash='dot')
+    style(fig,'Trading from the wording gap: what happened to $100?',500,
+          'Account value after trading costs · dollars')
+    fig.update_yaxes(tickprefix='$',tickformat=',.0f',rangemode='tozero')
+    fig.update_layout(meta={'chart_key':'bias_trading'},
+                      legend={'y':-.19},margin={'b':112})
+    return date_axes(fig)
+
+
+def bias_trading_results(daily, summary):
+    """Explain peak-to-low losses at each path's worst percentage drawdown."""
+    metrics={row['model']:row for row in summary.get('full_metrics',[])}
+    rows=[]
+    for model,label,*_ in BIAS_DISPLAY:
+        selected=daily.loc[daily.model.eq(model)].sort_values('date')
+        if selected.empty:
+            continue
+        wealth=100*selected.wealth.reset_index(drop=True)
+        peak=wealth.cummax().clip(lower=100)
+        fall=wealth/peak-1
+        worst=fall.idxmin()
+        rows.append({'Rule / comparison':label,'Final account from $100':f'${wealth.iloc[-1]:,.2f}',
+                     'Profit or loss':f'${wealth.iloc[-1]-100:+,.2f}',
+                     'Worst fall from a high':f'{100*fall.iloc[worst]:.1f}%',
+                     'Account at that fall: high → low':f'${peak.iloc[worst]:,.2f} → ${wealth.iloc[worst]:,.2f}'})
+        if model in metrics and not np.isclose(fall.iloc[worst],metrics[model]['max_drawdown'],atol=1e-10):
+            raise ValueError('Bias-trading daily paths and summary drawdowns disagree; refresh upstream outputs')
+    return pd.DataFrame(rows)
+
+
 def build():
     forecasts = frame(OUT / 'forecasts.csv')
     metrics = frame(OUT / 'model_metrics.csv')
@@ -189,6 +241,8 @@ def build():
     ai = read_json(ROOT / 'outputs' / 'ai_diagnostic_validation_metrics.json')
     investment_daily = frame(OUT / 'investment_full_daily.csv')
     investment_summary = read_json(OUT / 'investment_summary.json')
+    bias_daily = frame(OUT / 'bias_trading_daily.csv')
+    bias_summary = read_json(OUT / 'bias_trading_summary.json')
     figures = []
     if not forecasts.empty:
         primary = forecasts[(forecasts['target'] == 'sentiment') &
@@ -204,10 +258,10 @@ def build():
                                 name=interval_name,hoverinfo='skip',legendrank=30))
         fig.add_trace(go.Scatter(x=primary.month, y=primary.prediction,
                                 name='M1 economic prediction',line={'color':TEAL,'width':2.4},legendrank=20,
-                                hovertemplate='M1 prediction: %{y:.2f}<extra></extra>'))
+                                hovertemplate='M1 model expected: %{y:.2f} survey-score points<extra></extra>'))
         fig.add_trace(go.Scatter(x=primary.month, y=primary.observed,
                                 name='Observed headline',line={'color':NAVY,'width':2.4},legendrank=10,
-                                hovertemplate='Observed final: %{y:.1f}<extra></extra>'))
+                                hovertemplate='Published final survey score: %{y:.1f} points<extra></extra>'))
         if not monitor.empty:
             r = monitor.iloc[-1]
             fig.add_trace(go.Scatter(x=[r.month], y=[r.observed_preliminary], mode='markers',
@@ -224,12 +278,12 @@ def build():
                                     hovertemplate='October 1 M1 forecast: %{y:.2f}<extra></extra>'))
         fig.update_xaxes(rangeslider={'visible':True,'thickness':.085,'bgcolor':PALE,
                                       'bordercolor':'#D7E2E7','borderwidth':1})
-        style(fig,'Consumer sentiment, observed & expected',530,'Michigan index points')
+        style(fig,'How consumers felt, compared with the model',530,'Michigan survey score · index points')
         fig.update_layout(legend={'y':1.04,'yanchor':'bottom'},margin={'t':112,'b':85})
         figures.append(date_axes(fig))
         gap = go.Figure(go.Bar(x=primary.month, y=primary.gap,
                               marker_color=np.where(primary.gap < 0, RED, TEAL),name='Observed − M1 prediction',
-                              hovertemplate='Observed − predicted: %{y:.2f} points<extra></extra>'))
+                              hovertemplate='Actual survey score minus model estimate: %{y:.2f} points<extra></extra>'))
         gap.add_hline(y=0,line_color=SLATE,line_width=1)
         if not monitor.empty:
             r = monitor.iloc[-1]
@@ -242,7 +296,7 @@ def build():
         fig = go.Figure(go.Bar(x=providers.provider,y=providers.bias_pp,
                     marker_color=NAVY,name='Provider framing proxy',customdata=custom,
                     marker_line={'color':PAPER,'width':1},
-                    hovertemplate='<b>%{x}</b><br>Relative negative framing: %{y:.2f} pp<br>Conditional 95% resampling range: [%{customdata[2]:.2f}, %{customdata[3]:.2f}]<br>Titles: %{customdata[0]:.0f}<br>Common releases: %{customdata[1]:.0f}<extra></extra>'))
+                    hovertemplate='<b>%{x}</b><br>Extra titles labeled negative vs peers: %{y:.2f} percentage points<br>Month-resampling stability range: [%{customdata[2]:.2f}, %{customdata[3]:.2f}]<br>Titles: %{customdata[0]:.0f}<br>Same economic releases: %{customdata[1]:.0f}<extra></extra>'))
         interval_x,interval_y=[],[]
         for row in providers.itertuples():
             interval_x += [row.provider,row.provider,None]
@@ -307,6 +361,8 @@ def build():
         figures.append(date_axes(fig))
     if not investment_daily.empty:
         figures.append(investment_strategy_figure(investment_daily))
+    if not bias_daily.empty:
+        figures.append(bias_trading_figure(bias_daily))
     embedded = []
     for i, fig in enumerate(figures):
         embedded.append(pio.to_html(fig, full_html=False, include_plotlyjs=True if i == 0 else False,
@@ -348,10 +404,12 @@ h2{font:400 25px/1.25 Georgia,"Times New Roman",serif;letter-spacing:-.3px;margi
 .data-table td{padding:11px 13px;border-bottom:1px solid #E3EAED;color:#536977;vertical-align:top}.data-table tbody tr:nth-child(even){background:#F8F9F7}.data-table tbody tr:hover{background:#EDF3F4}.data-table td:first-child{color:var(--ink);font-weight:500}
 .scroll{overflow-x:auto}pre{white-space:pre-wrap;word-break:break-word;font:11px/1.65 Consolas,monospace;background:#EFF3F4;border:1px solid var(--rule);padding:18px;border-radius:4px;color:#425A6B}
 details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;font-weight:600;padding:7px 0}summary:focus-visible{outline:2px solid var(--teal);outline-offset:3px}code{font:12px Consolas,monospace;background:#ECF1F3;padding:2px 5px;border-radius:3px}
+.glossary-grid,.rule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px 22px}.glossary-grid{margin:18px 0 0}.glossary-grid div{border-top:1px solid var(--rule);padding-top:12px}.glossary-grid dt{font-weight:650;font-size:12px;color:var(--ink)}.glossary-grid dd{margin:5px 0 0;font-size:12px;color:#425A6B;line-height:1.65}.rule-grid article{background:#F0F5F5;border:1px solid #D7E4E7;padding:18px;border-radius:5px}.rule-grid h3{font:400 22px/1.25 Georgia,serif;margin:5px 0 10px}.rule-grid p{font-size:12px;margin:8px 0}.fund-key{font-size:12px!important;padding-top:12px;border-top:1px solid var(--rule)}
 .table-note{font-size:12px;color:var(--slate)}.page-footer{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #C7D6DE;margin-top:37px;padding-top:18px;font-size:10px;color:var(--slate);letter-spacing:.3px}
 .js-plotly-plot .plotly .modebar{background:transparent!important}.js-plotly-plot .plotly .modebar-btn path{fill:#657787!important}
 @media(max-width:720px){main{padding:22px 14px 38px}.masthead{font-size:9px;letter-spacing:.8px}.folio{display:none}.hero{padding:31px 5px 24px}h1{font-size:39px;letter-spacing:-1.2px}.hero-description{font-size:14px}.stats{grid-template-columns:1fr}.stat{padding:17px 21px}.stat+.stat{border-left:0;border-top:1px solid var(--rule)}.stat-value{font-size:34px}.card{padding:22px 18px}.chart-card{padding:18px 6px 17px}.card-header{padding:0 10px}.interaction-hint{display:none}.chart-note{margin:6px 13px 0}.notice{padding:20px}.jump-nav{gap:5px}.jump-nav a{font-size:10px;padding:6px 9px}.jump-nav .nav-label{width:100%}.page-footer{flex-direction:column;gap:5px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.jump-nav a{transition:none}}
+@media(max-width:850px){.glossary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rule-grid{grid-template-columns:1fr}}@media(max-width:520px){.glossary-grid{grid-template-columns:1fr}}
 </style></head><body><main>
 <div class="masthead"><strong>AI Applications in Finance · Research monitor</strong><span class="folio">Panagiotis Housos · ph2606</span></div>
 <header class="hero"><div class="eyebrow">Economic narratives · Fall 2026</div>
@@ -359,6 +417,17 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
 <p class="hero-description">A pre-election monitoring snapshot of economic conditions, consumer assessments and the language of economic news. Information cutoff: <strong>October 13, 2026</strong> (New York). Election day: November 3, 2026.</p>
 <div class="status-line"><span class="pill">Official economic vintages</span><span class="pill retrospective">Retrospective media sample</span><span class="pill review">Human validation outstanding</span></div></header>
 '''
+    html += '''<section class="card" aria-label="Plain-language guide"><div class="section-label">Start here · no finance background needed</div><h2>What are we trying to find out?</h2><p>People can feel unhappy about the economy even when some official numbers look healthy. We compare those feelings with a model, study the language of selected news headlines, and test three trading ideas. A link between two things does not prove that one caused the other.</p><dl class="glossary-grid">
+<div><dt>Survey and index</dt><dd>A survey asks people questions. Michigan combines answers into a consumer-sentiment score, called an index. It measures how people feel about the economy. A score of 50 does not mean that 50% of people are unhappy, and it is not $50.</dd></div>
+<div><dt>Forecast and the sentiment gap</dt><dd>A forecast is a model's estimate using information available at the time. A data vintage is a saved version of what was published then. M1 uses unemployment, prices and economic growth. The sentiment gap is the actual survey score minus that estimate. Negative means people felt worse than this model expected.</dd></div>
+<div><dt>Shares and percentage points</dt><dd>A share is a fraction: 30 negative titles out of 100 is 30%. Moving from 30% to 40% is a rise of 10 percentage points. It is not a 10% rise. News comparisons use percentage points; survey-score gaps use index points.</dd></div>
+<div><dt>A wording score is not a truth score</dt><dd>A computer labels headlines positive, neutral or negative. Reporting real job losses can correctly sound negative. Signed tone is the program's positive score minus its negative score, from −1 to +1. Its scores are not verified probabilities or proof of unfair reporting.</dd></div>
+<div><dt>Framing, salience and attribution</dt><dd>Framing is the angle a title emphasizes, such as high prices rather than slower price increases. Salience means which topics appear often. Attribution means giving someone credit or blame. These title-level flags are provisional, and a name alone is not blame.</dd></div>
+<div><dt>Ranges and model error</dt><dd>A shaded forecast range shows uncertainty, not a promise. The provider bars instead use month-resampling ranges to show sensitivity to the sampled months. RMSE summarizes forecast errors in survey-score points; lower is better when the same months are compared.</dd></div>
+<div><dt>The three economic inputs</dt><dd>U-3 is the unemployment rate among people working or looking for work. PCE inflation measures consumer-price changes over a year. GDP measures total economic output; real GDP adjusts for price changes. “QoQ annualized” expresses one quarter's growth as a yearly pace; it is not an observed full year's growth.</dd></div>
+<div><dt>Growth, losses and costs</dt><dd>CAGR is the steady yearly growth rate that would reach the final account value; real years vary. A drawdown is a fall from an earlier account high. Ten basis points is 0.10%: ten cents for every $100 bought or sold. Both sides of a fund switch cost money.</dd></div>
+<div><dt>The trading experiment's wording gap</dt><dd>This is a different gap: the average negative-title share of Reuters and NPR minus Colorado Sun's share. “Usual” means the middle value, or median, of the preceding 12 months, excluding the month being tested. It measures relative wording, not proven bias.</dd></div>
+</dl></section>'''
     if not forecasts.empty and not primary.empty:
         recent=primary.iloc[-1]
         period=pd.Timestamp(recent.month).strftime('%B %Y')
@@ -367,7 +436,7 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
 <div class="stat"><div class="stat-label">Economic-model prediction</div><div class="stat-value teal">{recent.prediction:.1f}</div><div class="stat-note">M1 · information available at the month’s forecast origin</div></div>
 <div class="stat"><div class="stat-label">Model-specific sentiment gap</div><div class="stat-value coral">{recent.gap:+.1f}</div><div class="stat-note">Index points · observed minus M1 prediction</div></div></div>'''
     html += '''<div class="card notice"><strong>Interpretation and data status</strong><p>A negative sentiment gap is unexplained under the specified model. It does not establish irrational consumers or a media effect. Media variables measure sampled content supply; exposure and cognitive bias are unobserved. The 2026 monitoring period is a snapshot, and partial October data must not be compared with complete months without qualification.</p><p>Factual accuracy has not been established for the corpus: numerical-claim screening is verification eligibility, never an accuracy score. Independent AI annotation is a development diagnostic; the required two-human validation is incomplete. Q3 GDP from the supplied workbook is quarantined until its official release.</p></div>'''
-    sections=['Sentiment','The gap','Providers','Media wording','Frames & salience','Sample coverage','Calibration','Economic inputs','Investing']
+    sections=['Sentiment','The gap','Providers','Media wording','Frames & salience','Sample coverage','Calibration','Economic inputs','Allocation reference','Bias-proxy trading']
     notes=[
         'Historical survey targets are latest-final observations, not historical target vintages. The interval uses earlier forecast errors and is not guaranteed to achieve 95% coverage. October diamonds are preliminary; they are excluded from completed-final assessment.',
         'A negative bar is unexplained pessimism under this economic specification. It is a model residual, not a percentage of biased consumers or a causal media effect.',
@@ -377,14 +446,35 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
         'Title counts use the left axis; outlet and source-group counts use the right. The coral title bar marks incomplete October. Availability in this captured sample does not establish what survey respondents encountered.',
         'Numerical-claim screening indicates eligibility for review, never factual accuracy. Alignment counts concern a purposive subset and do not identify a corpus-wide error rate.',
         'Each value is the latest released information in that forecast origin’s macro vintage. GDP remains quarterly, without interpolation. Reference-period age is measured from the period’s start, separately from publication timing.',
-        'January 2, 2015–October 2, 2026. Wealth starts from $100 before fees; all paths include 10 basis points per dollar bought or sold, including entry and final liquidation. The fixed mix rebalances monthly and is preferred retrospectively over the tested timing rule. Primary rule: 80% SPY when prior-month price exceeds its 10-month average and as-of labor deterioration is below 0.50 percentage point; otherwise 20%, with the remainder in BIL. Positive historical profit is not future alpha. Gap/media overlays use a different 44-origin sample and are omitted from this full-period chart.'
+        'Earlier allocation experiment, January 2, 2015–October 2, 2026. All paths start from $100 before fees and include ten cents per $100 bought or sold, including entry and final liquidation. The fixed mix rebalances monthly and is preferred retrospectively over the tested timing rule. The macro + trend rule uses 80% SPY when prior-month price exceeds its 10-month average and as-of labor deterioration is below 0.50 percentage point; otherwise 20%, with the remainder in BIL. This reference uses economic and price signals, unlike the separate wording-only experiment below. Its longer dates prevent a direct comparison of final dollars between the two charts.',
+        'Wording-only experiment, February 2, 2021–October 2, 2026, after assumed trading costs of ten cents per $100 bought or sold. The dotted $100 line is the starting amount before fees. Decisions use only the last completed month and its earlier wording history from the fixed Reuters/NPR/Colorado Sun roster. They use no economic indicators, prices or survey forecasts. CNBC/Fox provider bars are a separate six-event study and never choose trades. Two rules finish above $100, but all three finish below SPY. Historical profit does not establish useful prediction or future profit; leverage magnifies losses.'
     ]
     html += '<nav class="jump-nav" aria-label="Monitor sections"><span class="nav-label">Explore the evidence</span>'
-    html += ''.join(f'<a href="#panel-{i}">{escape(label)}</a>' for i,label in enumerate(sections[:len(embedded)]))+'</nav>'
+    nav_order=([9]+list(range(9))) if len(embedded)==10 else list(range(len(embedded)))
+    html += ''.join(f'<a href="#panel-{i}">{escape(sections[i])}</a>' for i in nav_order)+'</nav>'
     for i,chart in enumerate(embedded):
+        if i==9 and not bias_daily.empty:
+            html += '''<section class="card" aria-label="The three wording-only rules"><div class="section-label">The new experiment · three ideas, fixed before their returns</div><h2>Can a news-wording comparison guide an aggressive trade?</h2><p>Start with the negative-title share of Reuters and NPR, giving each equal weight, then subtract Colorado Sun's share. Compare last month's difference with its usual level over the preceding 12 months. The same three outlets are available in all 81 complete months. The calculation uses their wording and past wording only. Different topics and places, or computer-label errors, can cause this gap without unfair news.</p><div class="rule-grid">
+<article><div class="section-label">01 · Fade the gap</div><h3>Go against the signal</h3><p>If the national-minus-local gap is above its usual level, choose UPRO, the fund that aims to rise with the market. If below, choose SPXU, the fund that aims to rise when the market falls.</p></article>
+<article><div class="section-label">02 · Follow the gap</div><h3>Go with the signal</h3><p>Do the opposite: an above-usual gap chooses SPXU; a below-usual gap chooses UPRO. Keeping this opposite idea avoids assuming in advance how relative negativity should predict stocks.</p></article>
+<article><div class="section-label">03 · Wait for a turn</div><h3>Wait for a change</h3><p>Choose UPRO only when an above-usual gap has started falling since last month. Choose SPXU only when a below-usual gap has started rising. Otherwise hold BIL, the short Treasury-bill fund.</p></article>
+</div><p class="fund-key"><strong>What the fund names mean:</strong> UPRO aims for about +3% on a day when the S&amp;P 500 rises 1%; SPXU aims for about −3% on that day, before fees and expenses. Targets reset each day, so holding either for a month is not simply three times that month's market move. The S&amp;P 500 tracks large US companies; SPY holds an ordinary fund following that index. BIL holds short US Treasury bills. All three rules select one fund at a time. Missing information and exact ties select BIL.</p><p class="table-note">There are 68 monthly decisions, February 2021–September 2026. Each uses the previous completed month and 12 earlier months, with execution at the first joint ETF close strictly after the decision date. The shares came from 1,923 selected titles across the 81-month history; sparse local months sometimes contain only one title. These are reconstructed historical measurements, not signals proven available to a trader then.</p></section>'''
         html += f'<section class="card chart-card" id="panel-{i}" aria-label="{escape(sections[i])}"><div class="card-header"><span class="section-label">{i+1:02d} / {escape(sections[i])}</span><span class="interaction-hint">Drag to zoom · double-click to reset</span></div>{chart}<p class="chart-note">{escape(notes[i])}</p></section>'
+        if i==9 and not bias_daily.empty:
+            html += '<div class="card scroll"><h2>The outcome, including the difficult part</h2><p>Starting with $100, Fade ends at $143.52 and Wait ends at $138.68, while Follow ends at $18.52. The ordinary SPY comparison ends at $217.34. None of the three beats SPY in final dollars, and all three suffer a bigger worst percentage fall. A positive ending profit can hide a frightening loss along the way.</p>'
+            html += table_html(bias_trading_results(bias_daily,bias_summary),10)
+            other=[]
+            main_models={item[0] for item in BIAS_DISPLAY}
+            for result in bias_summary.get('full_metrics',[]):
+                if result['model'] not in main_models:
+                    other.append({'Other comparison':result['label'],
+                                  'Final account from $100':f"${100*(1+result['net_total_return']):,.2f}",
+                                  'Worst fall from a high':f"{100*result['max_drawdown']:.1f}%"})
+            if other:
+                html += '<details><summary>Other reference portfolios on the same dates and costs</summary><p class="table-note">These additional comparisons help distinguish a rising stock market or leveraged exposure from useful news-based timing. They do not choose or retune the three rules.</p>'+table_html(pd.DataFrame(other),10)+'</details>'
+            html += '<p class="table-note">“Worst fall” means the largest percentage loss from an earlier account high. The last column shows the actual dollars at that high and later low for an account that originally started at $100. It is not a dollar loss calculated by multiplying the percentage by the initial $100, nor necessarily the largest dollar drop. Entry, fund switches and final sale all pay the assumed costs.</p><p>The rules were written before calculating these new returns, after earlier project findings and SPY/BIL history were already known. Old headlines, the later language model and revised adjusted fund prices are reconstructed today. This is a historical experiment, not proof of unfair news, a causal media effect or a reliable way to make future money. Taxes and nonlinear market impact are omitted; no real trades were made. The more aggressive funds add risk without making the wording measure more trustworthy.</p></div>'
     if not investment_daily.empty:
-        html += '<div class="card scroll"><h2>Investment conclusion: a simpler reference allocation</h2><p>The monthly-rebalanced 60% SPY / 40% BIL mix is the preferred research reference after comparing these results. SPY buy-and-hold earned more with greater equity exposure and a deeper drawdown. This is a retrospective preference, not an optimal allocation or a promise of future profit. BIL holds short Treasury bills, rather than a broad bond portfolio.</p>'
+        html += '<div class="card scroll"><h2>Earlier allocation experiment: a separate reference</h2><p>On its longer 2015–2026 window, the monthly-rebalanced 60% SPY / 40% BIL mix is the preferred research reference over the tested macro + trend rule. SPY buy-and-hold earned more with greater stock-market exposure and a deeper fall from its high. This preference follows the observed results; it is not an optimal allocation or a promise of future profit. BIL holds short Treasury bills, rather than a broad bond portfolio. These final dollar values cannot be directly compared with the shorter wording-only experiment.</p>'
         rows=[]
         for result in investment_summary.get('full_metrics',[]):
             rows.append({'Portfolio':result['label'],
@@ -425,7 +515,7 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
     html += '</div>'
     html += '<div class="card scroll"><h2>Relevant releases and prospective events</h2>' + table_html(events,30) + '</div>'
     html += '<div class="card"><h2>Latest official observation status</h2><details><summary>Show release and vintage details</summary><pre>' + latest_text + '</pre></details></div>'
-    html += '<div class="card"><h2>Update procedure</h2><p>From the project folder, run the collection and scoring commands in README, rerun <code>python scripts/03_analyze.py</code>, then <code>python -m src.investing all</code>, and rebuild with <code>python scripts/04_build_deliverables.py</code>. Preserve old raw vintages, record the new cutoff, rerun validation, and rebuild the report, notebook and presentation. Changes to methods or codebook require a new version and sensitivity analysis.</p><p>Only official values published by each origin enter the economic forecast. Missing source-months remain missing. A newly acquired media sample can differ because rankings and wording change. No causal national-index estimate is displayed.</p></div><footer class="page-footer"><span>Panagiotis Housos · ph2606 · AI Applications in Finance</span><span>Local research artifact · October 13 economic snapshot</span></footer></main></body></html>'
+    html += '<div class="card"><h2>Update procedure</h2><p>From the project folder, run the collection and scoring commands in README, rerun <code>python scripts/03_analyze.py</code>, then <code>python -m src.investing all</code> and <code>python -m src.bias_trading all</code>, and rebuild with <code>python scripts/04_build_deliverables.py</code>. Preserve old raw vintages, record the new cutoff, rerun validation, and rebuild the report, notebook and presentation. Changes to methods or codebook require a new version and sensitivity analysis.</p><p>Only official values published by each origin enter the economic forecast. Missing source-months remain missing. A newly acquired media sample can differ because rankings and wording change. No causal national-index estimate is displayed.</p></div><footer class="page-footer"><span>Panagiotis Housos · ph2606 · AI Applications in Finance</span><span>Local research artifact · October 13 economic snapshot</span></footer></main></body></html>'
     path = ROOT / 'dashboard.html'
     path.write_text(html, encoding='utf-8')
     print(f'Built {path.name} with {len(figures)} interactive figures.')

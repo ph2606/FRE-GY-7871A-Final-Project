@@ -90,9 +90,9 @@ def build_report(content):
     tex = [PREAMBLE]
     data = evidence()
     latest = data['primary'].iloc[-1]
-    cards = [(f"{int(data['media'].item_count.sum()):,}", 'Sampled economic titles'),
-             (str(int(data['comparison'].n.iloc[0])), 'Common forecast months'),
-             (f'{latest.gap:.1f}', 'September M1 gap / index pts')]
+    cards = [(f"{int(data['media'].item_count.sum()):,}", 'Headlines analyzed'),
+             (str(int(data['comparison'].n.iloc[0])), 'Shared forecast test months'),
+             (f'{latest.gap:.1f}', 'September: actual - prediction')]
     figure_number = 0
     markdown = ['# Economic Narratives and Consumer Sentiment Ahead of the 2026 Midterms',
                 'Panagiotis Housos | ph2606 | Fall 2026', '']
@@ -144,13 +144,14 @@ def build_report(content):
 
 def build_notebook(content):
     input_paths = ['data/processed/monthly_dataset.csv','data/processed/media_monthly.csv',
-                   'outputs/tables/provider_bias.csv','data/processed/investment_prices.csv']
+                   'outputs/tables/provider_bias.csv','data/processed/investment_prices.csv',
+                   'data/processed/media_scores.csv','data/processed/bias_trading_prices.csv']
     expected_inputs = {name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
                        for name in input_paths if (ROOT/name).exists()}
     cells = [nbf.v4.new_markdown_cell('# Economic narratives and consumer sentiment\n\n**Panagiotis Housos | ph2606 | AI Applications in Finance | Final Project**\n\nInformation cutoff: October 13, 2026. Human validation is not completed; independent AI reviews are explicitly separate. Acquisition and model scoring run separately. The cells below rerun analysis from local frozen inputs. Raw datasets are excluded from Git under the established submission policy.'),
              nbf.v4.new_code_cell("from pathlib import Path\nimport json\nimport hashlib\nimport pandas as pd\nfrom IPython.display import display, Image\nROOT = Path.cwd()\nassert (ROOT / 'src/economics.py').exists(), 'Execute from the project root.'\nexpected_inputs = " + repr(expected_inputs) + "\nfor name, expected in expected_inputs.items():\n    path = ROOT / name\n    assert path.exists(), f'Acquire required input: {name}'\n    assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, f'Input changed: {name}. Rerun analysis and rebuild deliverables before executing this notebook.'\npd.set_option('display.max_columns', 14)\npd.set_option('display.max_colwidth', 70)\npd.set_option('display.precision', 4)"),
              nbf.v4.new_markdown_cell('## Recompute the frozen empirical analysis\n\nThe economic feature matrix uses historical ALFRED snapshots. Media reconstruction is retrospective and subject to source selection and original-wording limitations. The package never invents missing records, exposure or human labels.'),
-             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics'], ['-m', 'src.investing', 'analyze']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary analysis and exploratory dynamics recalculated from acquired observations.')")]
+             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics'], ['-m', 'src.investing', 'analyze'], ['-m', 'src.bias_trading', 'analyze']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary analysis and exploratory dynamics recalculated from acquired observations.')")]
     cells += [nbf.v4.new_markdown_cell('## Persistence and differenced-model sensitivity\n\nThese checks were added after the primary analysis and are exploratory. ADF and KPSS have different null hypotheses; structural breaks limit either interpretation. The differenced models use the same 44 test months and a separately identified two-contrast loss-test family.'),
               nbf.v4.new_code_cell("display(pd.read_csv(ROOT / 'outputs/tables/dynamics_unit_root.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_differenced_metrics.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_loss_hac.csv'))")]
     cells += [nbf.v4.new_markdown_cell('## Independent AI diagnostic: class and source concordance\n\nThese are AI development references, not human ground truth. The original pool has 300 items; final-corpus eligibility and mixed/uncertain exclusions are explicit. Small source/class cells have unstable estimates. Required human validation remains pending.'),
@@ -162,6 +163,9 @@ def build_notebook(content):
                   nbf.v4.new_code_cell("provider_table = pd.read_csv(ROOT / 'outputs/tables/provider_bias.csv')\ndisplay(provider_table)\nprovider_summary = json.loads((ROOT / 'outputs/tables/provider_bias_summary.json').read_text())\ndisplay(pd.Series(provider_summary, name='provider_comparison_protocol'))")]
     cells += [nbf.v4.new_markdown_cell('## Retrospective investment extension (October 17)\n\nThe primary macro/trend rule was fixed before performance calculation; the simpler monthly 60% SPY / 40% BIL benchmark is preferred after the comparison. Neither is an untouched holdout. Costs include entry, exit and both traded legs. Gap and media overlays use retrospective inputs. All 44 gaps are negative; this is exposure, not demonstrated timing.'),
               nbf.v4.new_code_cell("investment = json.loads((ROOT / 'outputs/tables/investment_summary.json').read_text())\nperformance = pd.read_csv(ROOT / 'outputs/tables/investment_metrics.csv')\ndisplay(performance.loc[performance.cost_bps.eq(10)])\nprint('Full-period cost sensitivity:')\ndisplay(performance.loc[performance['sample'].eq('full'), ['model','cost_bps','net_cagr','max_drawdown','annual_gross_turnover']])\nprint('Primary HAC diagnostics:')\ndisplay(pd.DataFrame(investment['hac_tests']).T)\nprint('Original two-test overlay family (unadjusted for exposure):')\ndisplay(pd.DataFrame(investment['overlay_tests']))\nprint('Post-result exposure diagnosis:')\nprint(json.dumps(investment['exposure_diagnostics'], indent=2))\nprint(investment['practical_conclusion'])")]
+    cells += [nbf.v4.new_code_cell("display(Image(filename=str(ROOT / 'outputs/investment_strategy.png')))"),
+              nbf.v4.new_markdown_cell('## Three aggressive strategies that use only earlier news wording\n\nA strategy is a rule for choosing what to buy. These three ideas use the same national-minus-local negative-wording score. None uses economic releases, survey answers or stock-price trends to choose funds. UPRO aims for three times the S&P 500\'s DAILY move; SPXU aims for three times the opposite DAILY move. These are risky daily targets, not promises for an entire month. Their actual historical fund prices are used. The fixed rules, current-month exclusion, costs and all benchmark results appear below. A losing idea is retained. These historical simulations do not establish verified bias or a future investment advantage.'),
+              nbf.v4.new_code_cell("bias = json.loads((ROOT / 'outputs/tables/bias_trading_summary.json').read_text())\nbias_metrics = pd.read_csv(ROOT / 'outputs/tables/bias_trading_metrics.csv')\nprint('All rules and all benchmarks, on exactly the same dates:')\ndisplay(bias_metrics.loc[bias_metrics.cost_bps.eq(10)])\nprint('Cost sensitivity for the three ideas:')\ndisplay(bias_metrics.loc[bias_metrics['sample'].eq('full') & bias_metrics.model.isin(bias['rule_names']), ['model','cost_bps','net_cagr','net_total_return','max_drawdown','terminal_value_10000']])\nprint('How often each rule chose each fund:')\ndisplay(pd.DataFrame(bias['rule_fund_counts']).fillna(0).astype(int))\nprint('Three historical return comparisons, with Holm correction (not alpha tests):')\ndisplay(pd.DataFrame(bias['tests_vs_spy']))\nprint('Signal inputs only:', bias['signal_inputs_only'])\nprint('Limitations:', *bias['limitations'], sep='\\n- ')")]
     for page_index,(title, items) in enumerate(content):
         cells.append(nbf.v4.new_markdown_cell('## ' + title))
         for item_index,item in enumerate(items):
@@ -183,7 +187,7 @@ def build_notebook(content):
     nbf.write(nb, ROOT / 'final_project.ipynb')
 
 
-def add_text(slide, left, top, width, height, text, size=24, color='172F43', bold=False):
+def add_text(slide, left, top, width, height, text, size=24, color='172F43', bold=False, paragraph_space=14):
     box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
     frame = box.text_frame
     frame.word_wrap = True
@@ -197,7 +201,7 @@ def add_text(slide, left, top, width, height, text, size=24, color='172F43', bol
         p.font.size = Pt(size)
         p.font.bold = bold
         p.font.color.rgb = RGBColor.from_string(color)
-        p.space_after = Pt(14 if i < len(lines)-1 else 0)
+        p.space_after = Pt(paragraph_space if i < len(lines)-1 else 0)
     return box
 
 
@@ -224,7 +228,20 @@ def build_slides(content):
         accent.fill.fore_color.rgb = RGBColor.from_string('167D8D')
         accent.line.fill.background()
         add_text(slide, .55, .35, 12.2, .9, item['title'], 32, bold=True)
-        if item.get('layout') == 'wide_chart':
+        if item.get('layout') == 'strategy_rules':
+            add_text(slide,.65,1.18,12.0,.70,item['intro'],19,paragraph_space=0)
+            add_text(slide,.65,2.00,12.0,.70,item['funds'],17,paragraph_space=0)
+            for column,(label,title,body) in enumerate(item['cards']):
+                left=.65+column*4.12
+                card=slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,Inches(left),Inches(2.88),Inches(3.78),Inches(2.22))
+                card.fill.solid();card.fill.fore_color.rgb=RGBColor.from_string('EAF1F4')
+                card.line.fill.background()
+                add_text(slide,left+.18,3.03,3.4,.28,label,12,color='167D8D',bold=True)
+                add_text(slide,left+.18,3.42,3.4,.42,title,20,bold=True)
+                add_text(slide,left+.18,4.02,3.4,1.0,body,18,paragraph_space=0)
+            add_text(slide,.68,5.38,11.95,1.0,item['example'],18,paragraph_space=0)
+            add_text(slide,.68,6.55,11.95,.26,item['caption'],11,color='657787')
+        elif item.get('layout') == 'wide_chart':
             add_text(slide, .60, 1.18, 12.1, .40, item['subtitle'], 20)
             add_picture_fit(slide, ROOT / 'outputs' / (item['image'] + '.png'), .65, 1.73, 12.0, 4.65)
             add_text(slide, .65, 6.55, 12.0, .35, item['caption'], 13)
@@ -234,7 +251,7 @@ def build_slides(content):
         if item.get('image') and item.get('layout') != 'wide_chart':
             add_picture_fit(slide, ROOT / 'outputs' / (item['image'] + '.png'), 6.2, 1.45, 6.6, 4.9)
         add_text(slide, .6, 6.98, 11.7, .3,
-                 f'Panagiotis Housos | ph2606   •   As of October 13, 2026   •   {i+1}/{len(content)}', 11, color='657787')
+                 f'Panagiotis Housos | ph2606   •   Economy cutoff: October 13, 2026   •   {i+1}/{len(content)}', 11, color='657787')
         slide.notes_slide.notes_text_frame.text = item['notes']
         notes += [f"Slide {i+1}: {item['title']}", item['notes'], '']
     prs.save(ROOT / 'Panagiotis_Housos_Final_Project.pptx')
@@ -258,4 +275,6 @@ if __name__ == '__main__':
         shutil.copyfile(ROOT/'outputs/provider_bias.pdf',ROOT/'Provider_Bias_Comparison.pdf')
     shutil.copyfile(ROOT/'outputs/investment_strategy.png',ROOT/'Investment_Strategy_Comparison.png')
     shutil.copyfile(ROOT/'outputs/investment_strategy.pdf',ROOT/'Investment_Strategy_Comparison.pdf')
+    shutil.copyfile(ROOT/'outputs/bias_trading.png',ROOT/'Bias_Trading_Comparison.png')
+    shutil.copyfile(ROOT/'outputs/bias_trading.pdf',ROOT/'Bias_Trading_Comparison.pdf')
     print('Built 12-page report source, notebook, dashboard, and presentation.')

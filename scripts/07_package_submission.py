@@ -20,6 +20,8 @@ ASSETS = (
     'Provider_Bias_Comparison.pdf',
     'Investment_Strategy_Comparison.png',
     'Investment_Strategy_Comparison.pdf',
+    'Bias_Trading_Comparison.png',
+    'Bias_Trading_Comparison.pdf',
 )
 ROOT_SOURCE = {
     '.gitattributes', '.gitignore', 'AI_USE.md', 'README.md', 'SNAPSHOT.md',
@@ -95,6 +97,7 @@ Contents:
 - `dashboard.html`: self-contained interactive dashboard; open in a browser.
 - `Provider_Bias_Comparison.png` and `.pdf`: standalone provider comparison figure.
 - `Investment_Strategy_Comparison.png` and `.pdf`: net wealth comparison.
+- `Bias_Trading_Comparison.png` and `.pdf`: three aggressive news-only experiments.
 - `final_project.ipynb`: executed notebook with {validation['notebook_code_cells']}
   code cells and {validation['notebook_errors']} recorded errors.
 - {source_count} tracked source/documentation files, including the notebook,
@@ -110,6 +113,10 @@ proxy uses a selected peer reference; it is not factual accuracy or ideological 
 The preferred monthly 60% SPY / 40% BIL allocation was chosen after comparing the
 fixed strategies. Historical profit after modeled costs does not establish media
 alpha, untouched validation, suitability for every investor, or future profit.
+The final revision explains concepts from scratch and adds three experiments
+whose fund choices use only earlier relative negative wording. They use actual
+daily leveraged ETF histories. All three underperform SPY's compounded growth
+on the same dates; one suffers a large loss. The proxy does not verify bias.
 
 The requirement for two independent human annotators on 300 items remains
 **unsatisfied**. AI annotation diagnostics are disclosed separately and cannot
@@ -124,7 +131,7 @@ for the workflow and `AI_USE.md` for AI assistance and limitations.
 Git HEAD at packaging: `{head}`; {state}.
 Included source is captured from the current tracked worktree, including staged
 new files; it is not asserted to equal HEAD. Untracked source is excluded.
-`SNAPSHOT.md` binds the notebook and all seven generated deliverables to their hashes.
+`SNAPSHOT.md` binds the notebook and all nine generated deliverables to their hashes.
 '''.encode('utf-8')
 
 

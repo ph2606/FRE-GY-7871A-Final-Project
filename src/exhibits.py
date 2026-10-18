@@ -17,14 +17,14 @@ SLATE, PALE, WARM = '#657787', '#EAF1F4', '#FCFBF8'
 GRID = '#E1E9ED'
 
 MODEL_LABELS = {
-    'M1_economic': 'M1 · Economic indicators',
-    'M2_economic_media': 'M2 · Economics + media',
-    'M3_economic_media_controls': 'M3 · Economics + media + household',
-    'M1_controls': 'Economics + household controls',
-    'AR1': 'AR(1)',
-    'AR_macro': 'AR + economic indicators',
-    'AR_macro_media': 'AR + economics + media',
-    'Persistence': 'Persistence',
+    'M1_economic': 'M1 · Economy',
+    'M2_economic_media': 'M2 · Economy + news',
+    'M3_economic_media_controls': 'M3 · Economy + news + household',
+    'M1_controls': 'Economy + household costs / income',
+    'AR1': 'Fit using previous survey score',
+    'AR_macro': 'Previous survey + economy',
+    'AR_macro_media': 'Previous survey + economy + news',
+    'Persistence': 'Copy the previous survey score',
 }
 
 
@@ -109,33 +109,33 @@ def build():
     p = forecasts[(forecasts.target == 'sentiment') & (forecasts.model == 'M1_economic')].copy()
     p['month'] = pd.to_datetime(p.month)
     p = p[p.month >= '2018-01-01'].sort_values('month')
-    fig = _figure('Consumer sentiment and the economic baseline',
-                  'Monthly Michigan index · chronological economic-only forecasts')
+    fig = _figure('Actual survey scores and earlier predictions',
+                  'Michigan survey points · predictions using the economic information available then')
     ax = _axis(fig.add_axes([.075, .18, .83, .56]))
     lower, upper = 'empirical_lower_95', 'empirical_upper_95'
     band = ax.fill_between(p.month, p[lower], p[upper], color=TEAL, alpha=.13,
-                           linewidth=0, label='Empirical 95% interval')
+                           linewidth=0, label='95% range from earlier mistakes')
     predicted, = ax.plot(p.month, p.prediction, color=TEAL, lw=1.9, label='M1 economic model')
     observed, = ax.plot(p.month, p.observed, color=NAVY, lw=2.15, label='Observed sentiment')
-    ax.set_ylabel('Michigan index', labelpad=12)
+    ax.set_ylabel('Survey score (index points)', labelpad=12)
     _date_axis(ax, p.month, padding_months=13)
-    ax.legend([observed, predicted, band], ['Observed sentiment', 'M1 economic model', 'Empirical 95% interval'],
+    ax.legend([observed, predicted, band], ['Actual survey score', 'M1 prediction', '95% range from earlier mistakes'],
               loc='lower left', bbox_to_anchor=(0, 1.025), ncol=3, frameon=False,
               borderaxespad=0, fontsize=9.7, handlelength=2, columnspacing=1.8)
     if len(p):
         last = p.iloc[-1]
-        _endpoint(ax, last.month, last.observed, f'{last.observed:.1f}  Observed', NAVY)
-        _endpoint(ax, last.month, last.prediction, f'{last.prediction:.1f}  M1', TEAL)
+        _endpoint(ax, last.month, last.observed, f'{last.observed:.1f}  Actual', NAVY)
+        _endpoint(ax, last.month, last.prediction, f'{last.prediction:.1f}  Predicted', TEAL)
     save(fig, 'economic_forecast')
 
     recent = p[p.month >= '2024-01-01']
-    fig = _figure('The sentiment gap, month by month',
-                  'Observed minus M1 prediction · index points unexplained under this model')
+    fig = _figure('The survey gap, month by month',
+                  'Actual minus predicted · a negative value means the model expected more optimism')
     ax = _axis(fig.add_axes([.075, .18, .85, .59]))
     ax.bar(recent.month, recent.gap, width=22,
            color=np.where(recent.gap < 0, RED, TEAL), alpha=.92, zorder=3)
     ax.axhline(0, color=NAVY, lw=1, zorder=4)
-    ax.set_ylabel('Observed − predicted', labelpad=12)
+    ax.set_ylabel('Actual − predicted\n(survey points)', labelpad=12)
     _date_axis(ax, recent.month)
     if len(recent):
         last = recent.iloc[-1]
@@ -163,7 +163,7 @@ def build():
     ax.set_yticks(y, [MODEL_LABELS.get(model, model.replace('_', ' ')) for model in subset.model],
                   fontsize=10.3, color=NAVY)
     ax.tick_params(axis='y', pad=12)
-    ax.set_xlabel('Out-of-sample RMSE · Michigan index points', labelpad=10)
+    ax.set_xlabel('Forecast mistake score (RMSE) · survey index points', labelpad=10)
     ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=5))
     if len(subset):
         maximum = float(subset.rmse.max())
@@ -180,27 +180,27 @@ def build():
         m = pd.read_csv(monthly_path)
         m['month'] = pd.to_datetime(m.month)
         m = m.sort_values('month')
-        fig = _figure('Economic wording across the captured media panel',
-                      'Source-balanced monthly valence · contextual probability difference; dictionary compound' + _partial_note(m))
+        fig = _figure('How positive or negative the headlines sound',
+                      'Higher = more positive wording · language model and word-list comparison' + _partial_note(m))
         ax = _axis(fig.add_axes([.075, .18, .83, .55]))
         tone = [c for c in m if any(x in c for x in ['tone','valence']) and pd.api.types.is_numeric_dtype(m[c])]
         tone_styles = {
-            'media_tone': ('Combined contextual', NAVY, 2.1, '-', 1),
-            'vader_tone': ('Dictionary (VADER)', SLATE, 1.3, (0, (2, 2)), .9),
-            'national_tone': ('National contextual', TEAL, 1.15, '-', .7),
-            'local_tone': ('Local contextual', RED, 1.15, '-', .8),
+            'media_tone': ('All groups: language model', NAVY, 2.1, '-', 1),
+            'vader_tone': ('Word list (VADER)', SLATE, 1.3, (0, (2, 2)), .9),
+            'national_tone': ('National sources', TEAL, 1.15, '-', .7),
+            'local_tone': ('Local sources', RED, 1.15, '-', .8),
         }
         for col in tone[:4]:
             label, color, width, dash, alpha = tone_styles.get(col, (col.replace('_', ' '), SLATE, 1.3, '-', .8))
             ax.plot(m.month, m[col], label=label, color=color, lw=width, ls=dash, alpha=alpha)
         ax.axhline(0, color=SLATE, lw=.8, ls=(0, (3, 3)))
-        ax.set_ylabel('Wording valence', labelpad=12)
+        ax.set_ylabel('Wording score', labelpad=12)
         _date_axis(ax, m.month, padding_months=11)
         if tone:
             _legend(ax, columns=4)
         if 'media_tone' in m and len(m):
             last=m.iloc[-1]
-            _endpoint(ax, last.month, last.media_tone, f'{last.media_tone:+.2f}  Combined', NAVY, fontsize=10)
+            _endpoint(ax, last.month, last.media_tone, f'{last.media_tone:+.2f}  All groups', NAVY, fontsize=10)
         save(fig, 'media_tone')
 
         fig = _figure('A fixed panel, uneven monthly capture',
@@ -244,7 +244,39 @@ def build():
     investment_path = TABLES / 'investment_full_daily.csv'
     if investment_path.exists():
         investment_figure(pd.read_csv(investment_path,parse_dates=['date']))
+    bias_path = TABLES / 'bias_trading_daily.csv'
+    if bias_path.exists():
+        bias_trading_figure(pd.read_csv(bias_path,parse_dates=['date']))
     print('Publication figures rebuilt.')
+
+
+def bias_trading_figure(data):
+    """Show every fixed news-only idea, including the large losing rule."""
+    _theme()
+    fig = _figure('Three news-only bets: more risk did not produce better growth',
+                  'What happened to $10,000 | Feb 2, 2021 to Oct 2, 2026 | After assumed trading costs',
+                  size=(10.2,3.5))
+    ax = _axis(fig.add_axes([.085,.20,.76,.53]))
+    styles=[('SPY_hold','Just hold the S&P 500 fund',NAVY,2.0,'-',0),
+            ('Fade_gap','Fade the gap',TEAL,2.0,'-',7),
+            ('Wait_turn','Wait for a turn',SLATE,1.8,(0,(4,2)),-7),
+            ('Follow_gap','Follow the gap',RED,1.7,'-',0)]
+    highest=0
+    for model,label,color,width,dash,dy in styles:
+        series=data.loc[data.model.eq(model)].sort_values('date')
+        ax.plot(series.date,10000*series.wealth,color=color,lw=width,ls=dash,label=label)
+        highest=max(highest,float(series.wealth.max()*10000))
+        last=series.iloc[-1]
+        _endpoint(ax,last.date,10000*last.wealth,f'${10000*last.wealth:,.0f}',color,dy=dy,fontsize=10)
+    ax.axhline(10000,color=SLATE,lw=.8,ls=(0,(2,3)),alpha=.55,zorder=1)
+    _legend(ax,columns=4)
+    _date_axis(ax,data.date,padding_months=12)
+    ax.set_ylim(0,highest*1.08)
+    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter('${x:,.0f}'))
+    ax.set_ylabel('Money remaining',labelpad=11)
+    fig.text(.085,.045,'Rules use only earlier news-framing scores. 3x funds reset daily. Historical tests do not prove a usable bias advantage.',
+             fontsize=9.5,color=SLATE)
+    save(fig,'bias_trading')
 
 
 def investment_figure(data):
@@ -276,8 +308,8 @@ def provider_bias_figure(data):
     """Vertical, alphabetical provider bars with exact raw resampling ranges."""
     _theme()
     data = data.sort_values('provider').reset_index(drop=True)
-    fig = _figure('Economic headlines: same releases, different emphasis',
-                  '95% month-resampling stability ranges · zero is the sampled-peer reference',
+    fig = _figure('Same reports, different headline emphasis',
+                  'Lines show variation when months are sampled again · zero means matching these peers',
                   size=(10.2, 4.0))
     ax = _axis(fig.add_axes([.085, .265, .855, .515]))
     if data.empty:

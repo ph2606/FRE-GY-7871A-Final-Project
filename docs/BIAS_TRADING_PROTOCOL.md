@@ -1,0 +1,39 @@
+# Bias-only trading experiments: rules fixed before calculation
+
+Recorded for the final plain-language revision, after the October 17 allocation study. This is a retrospective extension. Earlier project findings and SPY/BIL performance are already known. These are original research ideas, not an untouched historical test, a claim of proven media bias, or instructions to place orders. This file must remain unchanged after the new strategy returns are calculated. New market retrievals record its SHA-256 before calculation.
+
+## One news-framing score, three different bets
+
+Use the existing final headline scores. The fixed roster is Reuters and NPR for national news, and Colorado Sun for local news. These three outlets have observations in every completed month from January 2020 through September 2026. The roster is chosen for continuous coverage before calculating new trading results, not for profitable returns. Other original outlets have missing months. Do not use the separate six-release CNBC/Fox comparison as a trading history.
+
+For each completed calendar month, compute the negative-label share within each of the three outlets. Average Reuters and NPR equally, then subtract Colorado Sun and multiply by 100. Thus, 40% negative national titles minus 30% negative local titles gives +10 percentage points. Call this B, the relative negative-framing score. Different events, audiences and geography can cause the difference. B does not prove that a story is false, politically biased, or too negative for the underlying facts. The labels lack the required independent human validation.
+
+At each first-calendar-day origin from February 2021 through September 2026 (68 monthly decisions), use the immediately preceding completed month's B. Its usual level is the median of the twelve exact calendar months before that signal month, excluding the signal month itself. The median is the middle value after sorting (the mean of the two middle values for twelve months). The change is signal-month B minus immediately preceding-month B. Do not fill missing months. Require all three outlets in the current month and all twelve baseline months. Missing inputs or a comparison tied within 1e-10 percentage point mean hold BIL.
+
+1. **Fade the gap:** if B is above its usual level, buy UPRO; if below, buy SPXU. Idea: unusually negative national emphasis may produce excessive fear that later fades. Unusually positive relative emphasis may produce excessive optimism. This is a hypothesis, not an identified mispricing mechanism.
+2. **Follow the gap:** if B is above its usual level, buy SPXU; if below, buy UPRO. Opposite hypothesis: the change in emphasis may warn about market weakness or strength before prices fully adjust.
+3. **Wait for a turn:** buy UPRO only when B is above its usual level but is falling from the preceding month. Buy SPXU only when B is below its usual level but rising. Otherwise hold BIL. Idea: wait for unusual emphasis to start reversing before making the opposite bet. A flat change gives BIL.
+
+Only those news-framing inputs determine the three strategies' fund choices. No unemployment, inflation, GDP, survey score, sentiment-model residual, price trend, market return or stop-loss threshold enters the signal. Prices determine executed holdings, costs and measured outcomes, never the choice. There is no threshold grid, alternative-roster return search, best-window selection, or return-based retuning. All three ideas and all benchmark results must be disclosed.
+
+## What is bought and when
+
+Invest 100% of available portfolio value in the chosen ETF, using fractional units and no borrowing in the investor's account. UPRO targets +3 times the S&P 500's **daily** movement; SPXU targets -3 times its **daily** movement. These funds themselves use leverage and derivatives. BIL holds short Treasury bills. Holding SPXU is a bet on a falling market even though the investor buys, rather than shorts, the ETF.
+
+Use actual split/distribution-adjusted daily ETF prices, not three times a monthly SPY return. Fund expenses, derivatives and financing affect the observed ETF return and are not subtracted a second time. A 3x daily fund can lose money across several days even when the index finishes unchanged. Nearly all invested capital can be lost; a safe cash substitute is not implied. Daily closing drawdowns do not capture worse intraday losses.
+
+Execute at the close of the first common exchange session strictly after the first-calendar-day origin. Earlier holdings earn the return into that closing price; the new choice earns only subsequent returns. The evaluated path begins February 2, 2021 and ends with liquidation at the October 2, 2026 close, before the original October 13 economic cutoff. September 2026 titles can inform an October allocation, but that unfinished holding period is excluded. The corpus and classifier were reconstructed later, so this lag convention is simulated information timing, not proof that the signal was historically obtainable then.
+
+## Costs, comparison and checks
+
+The primary cost is 10 basis points (0.10%, or $1 per $1,000 traded) on every dollar bought or sold, including entry and final liquidation. Selling one fund and buying another charges both legs. Solve fees from the available portfolio value so fees are not paid with invented money. Allow fund weights to drift between monthly rebalances. Report 0 and 25 basis-point sensitivity. Taxes, nonlinear market impact and investor-specific commissions are omitted; the cost rate is assumed. Reinvested distributions and synthetic fractional adjusted-price units are approximations, not actual account trades.
+
+Use identical execution dates and costs for six descriptive benchmarks: SPY buy-and-hold; BIL buy-and-hold; UPRO buy-and-hold; SPXU buy-and-hold; monthly 50% UPRO / 50% SPXU; and monthly 60% SPY / 40% BIL. The mixed leveraged-fund benchmark is not risk-free: compounding, fund costs and rebalancing can cause losses. Comparing with always-UPRO helps separate a profitable market direction from useful timing, but no benchmark comparison alone identifies causal media alpha.
+
+Report net total return, annual compound growth, worst daily closing drawdown, volatility, ending dollars from $10,000, turnover, trades, fund-choice counts, and time spent in upward/inverse/bill funds. Preserve the full sample and both allocation-origin subperiods February 2021–December 2023 and January 2024–September 2026; each ends at its following execution boundary. Both subperiods are retrospective descriptions, not untouched validation.
+
+Use two-sided HAC(21) uncertainty for the mean daily net-return difference between each of the three ideas and SPY. Apply Holm's correction to this single three-test family; unlike an independence-based interpretation, Holm is valid under arbitrary test dependence. These tests compare returns at different risks and do not estimate alpha or correct for every strategy someone could have tried. Other benchmark metrics and subperiods are descriptive. No new result permits a guarantee of future profit or a claim that news bias causes returns.
+
+Validate exchange-session completeness, immutable raw-response hashes, strict lags, exclusion of the current month from the baseline, equality/missing handling, self-financing costs, old-holding ownership of execution-day returns, and all three published results. Independently replay the saved daily portfolios before final publication.
+
+Primary instrument references: [UPRO issuer](https://www.proshares.com/our-etfs/leveraged-and-inverse/upro), [SPXU issuer](https://www.proshares.com/our-etfs/leveraged-and-inverse/spxu), [UPRO prospectus](https://www.proshares.com/globalassets/proshares/prospectuses/upro_summary_prospectus.pdf), [SPXU prospectus](https://www.proshares.com/globalassets/proshares/prospectuses/spxu_summary_prospectus.pdf). These define the products; they do not endorse these strategies.

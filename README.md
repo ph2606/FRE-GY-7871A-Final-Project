@@ -4,9 +4,13 @@ Panagiotis Housos | ph2606 | AI Applications in Finance | Fall 2026
 
 This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The economic information cutoff is **October 13, 2026**, America/New_York. The **October 15 revision** adds a separate provider comparison of January–September releases, and the **October 17 extension** evaluates investment allocations. Open [the executed notebook](final_project.ipynb) for the computed report and aggregate exhibits. The local deliverables are a 12-page LaTeX PDF, an interactive standalone dashboard, a standalone provider bar graph, and a PowerPoint with speaker notes.
 
-The main conclusion is that a large gap from the three-indicator economic model is sensitive to model dynamics and survey-method controls. Persistence is a demanding benchmark. Lagged media tone provides no robust incremental forecasting evidence in the common chronological assessment. A separate investment extension finds positive historical profits after modeled costs, but the tested macro timing rule underperforms a simpler SPY/BIL mix. No causal national media effect or reliable future investment alpha is established. Exact computed metrics are preserved in the notebook and snapshot.
+People can feel worse about the economy than official numbers suggest. This project asks whether selected news wording helps explain that difference, then tests three aggressive trading ideas using the wording alone. The economic-model answer changes when we account for persistent survey scores and changes in survey methods. The news measure does not reliably improve forecasts. Two wording-only trading rules make a historical profit after assumed costs, but all three finish below an ordinary S&P 500 fund and suffer larger worst percentage losses. These findings do not prove that news caused people's feelings or establish a reliable way to earn future profits.
+
+**A quick vocabulary guide:** a survey asks people questions; an index combines answers into a score, not a dollar amount or a percentage of unhappy people. A forecast is a model's estimate. The sentiment gap is actual score minus model estimate. A percentage point is the difference between percentages: 40% minus 30% is 10 percentage points. The trading experiment's **wording gap** is a different measure: how much more often selected national headlines are labeled negative than one local outlet's headlines. Negative news can be accurate. The dashboard explains these terms before its charts and gives plain-language examples of the fund choices and losses.
 
 **Material assignment limitation:** the requested two independent human annotators were unavailable. Blinded 300-item human worksheets, guide, adjudication workflow and validation code are prepared. Two separate AI agents independently reviewed the same 300 items without seeing classifier outputs or each other's labels. Their diagnostic concordance is explicitly AI, and cannot satisfy the human requirement. No human accuracy, agreement or validated factual-error rate is invented.
+
+New to this topic? Start with the [plain-language reading guide](docs/READING_GUIDE.md), including the two different gaps, a worked trading decision and a short glossary.
 
 ## Measurement and timing
 
@@ -40,7 +44,32 @@ The classifier has not been human-validated on the new provider sample. Truthful
 
 The primary supplement uses a documented AI title/date relevance review, plus mechanical exclusions for previews, unrelated metrics, market reactions and multi-topic roundups. Administrative branding and a leading Watch prefix are removed before scoring; raw titles are preserved. Detailed review decisions remain local at `data/annotations/provider_relevance_review.csv`. A fresh clone can acquire/score the automated candidates, but exact reproduction of this refinement requires the saved local review or a new documented review. It must not be represented as human validation or an untouched test. Sensitivities change some provider estimates and signs; the bars are not a provider-reputation ranking.
 
-## Investment comparison
+## Three aggressive wording-only trading ideas
+
+Use only the negative-title shares of **Reuters, NPR and Colorado Sun**, not economic numbers, market-price trends or survey forecasts. Reuters and NPR receive equal national weight; subtract Colorado Sun's share. Compare the previous completed month's difference with the middle value of the preceding 12 months, excluding the month being tested. This is a relative-wording proxy, not a verified measure of factual or political bias. The fixed three-outlet roster has complete coverage; the separate six-release CNBC/Fox provider graph is not a trading history.
+
+| Fixed idea | Above-usual national-minus-local gap | Below-usual gap |
+|---|---|---|
+| Fade the gap | UPRO | SPXU |
+| Follow the gap | SPXU | UPRO |
+| Wait for a turn | UPRO only if the gap is also falling | SPXU only if the gap is also rising |
+
+UPRO aims for three times the S&P 500's daily move; SPXU aims for three times the opposite daily move. These are daily targets before fees, not three times a whole month's return. BIL holds short US Treasury bills. Every rule holds one fund at a time; missing data, ties and waiting states use BIL. The rules were fixed before their new returns were calculated, after earlier project findings and SPY/BIL history were known. No settings were searched to find a winner.
+
+From **February 2, 2021 to October 2, 2026**, with ten cents paid per $100 bought or sold, including entry, switches and final sale:
+
+| Rule / comparison | Final account from $100 | Worst fall from an earlier high | Account high → low at that percentage fall |
+|---|---:|---:|---:|
+| Fade the gap | $143.52 | −63.7% | $200.60 → $72.75 |
+| Follow the gap | $18.52 | −89.1% | $111.27 → $12.16 |
+| Wait for a turn | $138.68 | −34.4% | $144.82 → $94.96 |
+| Ordinary S&P 500 fund (SPY) | $217.34 | −24.5% | $126.74 → $95.70 |
+
+The account can rise before falling, so a drawdown is not a loss calculated from the original $100. The last column shows the high and later low at the worst **percentage** fall; another period can have a larger dollar fall. None of the three ends above SPY, and all three have a deeper worst percentage fall. Greater leverage makes the experiment more aggressive, not the evidence stronger. Positive past profit is not proof of future skill, and no rule is retuned after these results.
+
+The history is reconstructed using retrospectively collected titles, a later language model and revised adjusted fund prices. Sparse local months can contain one title; different topics and places can change the gap even when every story is true. Taxes and nonlinear market impact are omitted. See the [simple signal recipe and exact counts](docs/BIAS_SIGNAL_METHOD.md), [frozen trading protocol](docs/BIAS_TRADING_PROTOCOL.md) and [results including all reference portfolios](docs/BIAS_TRADING_RESULTS.md). No trades were placed.
+
+## Earlier allocation comparison: a separate reference
 
 The October 17 extension tests a fixed macro-and-trend allocation against SPY buy-and-hold, BIL buy-and-hold and a monthly-rebalanced **60% SPY / 40% BIL** mix. The protocol preceded calculation of strategy performance, after the economic findings were known. From **January 2, 2015 through October 2, 2026**, $100 becomes **$188.01** under the timing rule, **$280.16** under the fixed mix, **$453.78** in SPY and **$125.29** in BIL. Each path pays **10 basis points per dollar bought or sold**, including entry and final liquidation; both sides of a switch incur costs. The fixed mix is the preferred research reference retrospectively, with 9.17% net CAGR and a 20.78% maximum drawdown, versus 5.52% and 20.11% for the timing rule. SPY delivers more growth with a 33.72% maximum drawdown. This comparison does not establish an optimal allocation or future profit.
 
@@ -68,6 +97,7 @@ $projectPython = '.\.venv\Scripts\python.exe'
 & $projectPython scripts/03_analyze.py
 & $projectPython -m src.dynamics
 & $projectPython -m src.investing all
+& $projectPython -m src.bias_trading all
 & $projectPython scripts/04_build_deliverables.py
 & $projectPython scripts/05_execute_notebook.py
 xelatex -interaction=nonstopmode -halt-on-error report.tex
@@ -91,13 +121,13 @@ For separately identified AI development diagnostics, use `--label-type ai_diagn
 
 ## Dashboard and prospective updates
 
-Open local `dashboard.html` for interactive date zooming, series toggles and hover values. Its nine charts show economic forecasts and uncertainty, gaps, provider framing, media measures, source coverage, calibration, economic inputs and investment wealth after costs. Supporting tables retain model errors and release events. It clearly labels unvalidated measures, incomplete October, unavailable factual accuracy and the limits of retrospective investment results. The generator is [src/dashboard.py](src/dashboard.py). No external hosting, credentials or paid services are needed.
+Open local `dashboard.html` for interactive date zooming, series toggles and hover values. Its ten charts show economic forecasts and uncertainty, gaps, provider framing, media measures, source coverage, calibration, economic inputs, the earlier allocation reference and the new wording-only trading results. A first-use glossary, three rule cards and dollar examples explain the evidence without assuming finance knowledge. Supporting tables retain model errors and release events. It clearly labels unvalidated measures, incomplete October, unavailable factual accuracy and the limits of retrospective investment results. The generator is [src/dashboard.py](src/dashboard.py). No external hosting, credentials or paid services are needed.
 
 Future updates must preserve previous vintages, verify official calendars, use only information published by each origin, and rebuild every artifact. October 23 Michigan final and October 29 GDP/PCE releases are after this cutoff. Election proximity is context, not an identified treatment. [The causal design](docs/causal_design.md) details a prospective truthful-framing experiment, falsification and national transportability requirements; no participants were recruited.
 
 This submission intentionally freezes the October 13 snapshot. Advancing the monitoring period requires changing `CUTOFF` in `src/economics.py`, the origin range and cutoff-vintage calls in `scripts/01_collect_economics.py`, the monitoring target/preliminary-source record in `scripts/03_analyze.py`, the media acquisition `--end`, and cutoff/period descriptions in the dashboard and shared narrative. Verify and replace the preliminary record with the correctly dated official release; never carry October's 46.3 into a different month. Archive mutable Michigan/source-response caches before acquisition so the prior snapshot remains available. Then rerun the documented pipeline, validation and snapshot. Merely rerunning the frozen commands does not advance the study date.
 
-Also update `LAST_FINAL_TARGET_MONTH` only when the corresponding final survey release is available. The provider supplement's event registry/window and the investment protocol's origin/execution dates are frozen independently. Do not extend a historical wealth chart by silently changing its evaluation window. Rerunning the saved notebook checks its input hashes and stops on changed inputs; rebuild it after an intentional refresh so the narrative, calculated tables and saved figures stay consistent.
+Also update `LAST_FINAL_TARGET_MONTH` only when the corresponding final survey release is available. The provider supplement's event registry/window and both investment protocols' origin/execution dates are frozen independently. Preserve the wording signal's fixed roster and full preceding-12-month baseline; incomplete October cannot enter a completed-month signal. Do not extend a historical wealth chart by silently changing its evaluation window. Rerunning the saved notebook checks its input hashes and stops on changed inputs; rebuild it after an intentional refresh so the narrative, calculated tables and saved figures stay consistent.
 
 The original AI review packet has 300 titles, of which 277 survive final relevance screening. The separate final human packet retains those 277 and supplements 23 eligible titles, yielding 300 final-corpus items in independently shuffled blank forms. The original AI labels and scores remain unchanged. Human and AI evaluations therefore have explicitly different eligible pools.
 
