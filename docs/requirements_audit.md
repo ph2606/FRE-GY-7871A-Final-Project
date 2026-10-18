@@ -1,5 +1,7 @@
 # Final-project requirements audit
 
+October 18 integration: the main report now adds explicit uncertainty, class/source AI concordance, a separate external human-consensus transfer benchmark, factual spot checks, a powered causal proposal and a clearly separated Part B manifesto. The user explicitly instructed integrating Part B and disregarding the report's original page cap. The 6-8 minute presentation target remains. The two independent human annotators on 300 target-corpus items are still missing; external published labels do not satisfy that criterion. Grading weights and the original page requirement below are retained as the assignment states them, not silently reinterpreted.
+
 Source of requirements: `Final_Project_Applications_in_Finance_Oct_2026.pdf`, five pages, read in full before implementation. The supplied workbook was inspected separately. This is a checklist for review, not a claim that every item is already satisfied.
 
 ## Required questions and evidence locations

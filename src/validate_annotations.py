@@ -82,10 +82,32 @@ def evaluate(a_path,b_path,adjudicated=None,label_type='human',out=None):
                 diagnostics['annotator_'+annotator][model]=entry
         result['model_reference_concordance']=diagnostics
         final_merged=merged[merged.id.isin(final_ids)]
+        # Preserve both cohorts: inspecting relevance after annotation must not
+        # silently turn the original 300-item diagnostic into a final holdout.
+        cohort_summary={}
+        for cohort,subset in [('original_review_pool',merged),('final_eligible_pool',final_merged)]:
+            entry={'n':len(subset),
+                   'tone_agreement':float(subset.tone_a.eq(subset.tone_b).mean()) if len(subset) else None,
+                   'annotators':{}}
+            for annotator in ['a','b']:
+                tones=subset['tone_'+annotator]
+                comparable=int(tones.isin(['negative','neutral','positive']).sum())
+                entry['annotators']['annotator_'+annotator]={
+                    'three_class_reference_n':comparable,
+                    'excluded_mixed_or_uncertain_n':len(subset)-comparable,
+                    'tone_counts':{tone:int(tones.eq(tone).sum()) for tone in TONES}}
+            cohort_summary[cohort]=entry
+        result['cohort_summary']=cohort_summary
         result['final_eligible_model_reference_concordance']={}
         for annotator in ['a','b']:
             classified=final_merged[final_merged['tone_'+annotator].isin(['negative','neutral','positive'])]
-            result['final_eligible_model_reference_concordance']['annotator_'+annotator]={model:compare(classified['tone_'+annotator],classified[col]) for model,col in [('contextual','contextual_class'),('dictionary','vader_class')]}
+            final_diagnostics={}
+            for model,col in [('contextual','contextual_class'),('dictionary','vader_class')]:
+                entry=compare(classified['tone_'+annotator],classified[col])
+                entry['by_source']={source:compare(g['tone_'+annotator],g[col])
+                                    for source,g in classified.groupby('source')}
+                final_diagnostics[model]=entry
+            result['final_eligible_model_reference_concordance']['annotator_'+annotator]=final_diagnostics
         if adjudicated:
             adj=read(adjudicated);adj=adj[adj.tone.isin(['negative','neutral','positive'])]
             reference=adj.merge(scores[['id','source','contextual_class','vader_class']],on='id',validate='one_to_one')

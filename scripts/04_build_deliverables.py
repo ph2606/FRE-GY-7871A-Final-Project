@@ -18,6 +18,9 @@ from study_content import sections, slides, evidence
 from src.dashboard import build as build_dashboard
 from src.exhibits import build as build_figures
 from src.annotation_packet import build as build_human_packet
+from src.reader_evidence import build as build_reader_evidence
+from src.part_b_demography import build as build_demography
+from src.rubric_evidence import build as build_rubric_evidence
 
 
 def esc(value):
@@ -72,8 +75,8 @@ PREAMBLE = r'''\documentclass[11pt,letterpaper]{article}
 \pagestyle{fancy}\fancyhf{}
 \fancyhead[L]{\sffamily\fontsize{8.3}{10}\selectfont\color{slate} AI APPLICATIONS IN FINANCE\quad /\quad RESEARCH REPORT}
 \fancyhead[R]{\sffamily\fontsize{8.3}{10}\selectfont\color{slate} Panagiotis Housos\enspace |\enspace ph2606}
-\fancyfoot[L]{\sffamily\fontsize{8.0}{10}\selectfont\color{slate} Information cutoff: October 13, 2026\enspace |\enspace Preliminary evidence}
-\fancyfoot[R]{\sffamily\small\color{teal}\bfseries\ifnum\value{page}<10 0\fi\thepage\enspace\textcolor{slate}{/ 12}}
+\fancyfoot[L]{\sffamily\fontsize{8.0}{10}\selectfont\color{slate} Economy: October 13, 2026\enspace |\enspace Reader extension: October 18, 2026}
+\fancyfoot[R]{\sffamily\small\color{teal}\bfseries\ifnum\value{page}<10 0\fi\thepage\enspace\textcolor{slate}{/ TOTALPAGES}}
 \renewcommand{\headrulewidth}{0.35pt}
 \renewcommand{\headrule}{\hbox to\headwidth{\color{rulecolor}\leaders\hrule height \headrulewidth\hfill}}
 \titleformat{\section}{\sffamily\fontsize{18}{21}\selectfont\bfseries\color{navy}}{}{0pt}{}
@@ -87,7 +90,7 @@ PREAMBLE = r'''\documentclass[11pt,letterpaper]{article}
 
 
 def build_report(content):
-    tex = [PREAMBLE]
+    tex = [PREAMBLE.replace('TOTALPAGES', str(len(content)))]
     data = evidence()
     latest = data['primary'].iloc[-1]
     cards = [(f"{int(data['media'].item_count.sum()):,}", 'Headlines analyzed'),
@@ -99,11 +102,11 @@ def build_report(content):
     for page, (title, items) in enumerate(content):
         if page:
             tex.append(r'\newpage')
-        tex.append(r'\setlength{\parskip}{' + ('5.5pt' if page == 6 else '7pt') + '}')
+        tex.append(r'\fontsize{10.6}{13.5}\selectfont\setlength{\parskip}{6pt}')
         if page == 0:
             tex += [r'{\sffamily\fontsize{9}{11}\selectfont\bfseries\color{teal} ECONOMIC PERCEPTIONS\quad /\quad 2026 MIDTERMS}\par\vspace{5pt}',
                     r'{\coverfont\fontsize{30}{33}\selectfont\color{navy} Economic narratives\\[-1pt]\& consumer sentiment}\par\vspace{5pt}',
-                    r'{\sffamily\fontsize{11}{14}\selectfont\color{slate} Ahead of the 2026 U.S. midterm elections}\par\vspace{8pt}',
+                    r'{\sffamily\fontsize{11}{14}\selectfont\color{slate} Ahead of the 2026 U.S. midterms\enspace /\enspace With a manifesto for independent judgment}\par\vspace{8pt}',
                     r'\begingroup\setlength{\fboxsep}{8pt}\noindent']
             for i, (value, label) in enumerate(cards):
                 tex.append(r'\colorbox{mist}{\begin{minipage}[c][43pt][c]{.29\linewidth}\raggedright'
@@ -111,8 +114,6 @@ def build_report(content):
                            + r'{\sffamily\fontsize{8.2}{10}\selectfont\color{slate} ' + esc(label)
                            + r'}\end{minipage}}' + (r'\hfill' if i < 2 else ''))
             tex.append(r'\par\endgroup\vspace{12pt}')
-        if page == 11:
-            tex.append(r'\fontsize{9.4}{11.8}\selectfont')
         numbered = re.match(r'^(\d+)\.\s+(.*)', title)
         heading = (r'\textcolor{teal}{\fontsize{11}{13}\selectfont ' + numbered[1].zfill(2)
                    + r'}\quad ' + esc(numbered[2])) if numbered else esc(title)
@@ -140,24 +141,37 @@ def build_report(content):
                 markdown += ['![' + item['caption'] + '](outputs/' + item['name'] + '.png)', '']
     (ROOT / 'report.tex').write_text('\n'.join(tex + [r'\end{document}']), encoding='utf-8')
     (ROOT / 'REPORT.md').write_text('\n'.join(markdown), encoding='utf-8')
+    (ROOT/'outputs/report_structure.json').write_text(json.dumps({
+        'sections':[title for title,_ in content], 'expected_pages':len(content),
+        'page_limit_override':'User explicitly requested an integrated Part B and instructed disregarding the 10-12 page limit.',
+        'part_b_start_page':next(i+1 for i,(title,_) in enumerate(content) if title.startswith('Part B')),
+        'appendices_start_page':next(i+1 for i,(title,_) in enumerate(content) if title.startswith('Appendix A')),
+    },indent=2),encoding='utf-8')
 
 
 def build_notebook(content):
     input_paths = ['data/processed/monthly_dataset.csv','data/processed/media_monthly.csv',
                    'outputs/tables/provider_bias.csv','data/processed/investment_prices.csv',
-                   'data/processed/media_scores.csv','data/processed/bias_trading_prices.csv']
+                   'data/processed/media_scores.csv','data/processed/bias_trading_prices.csv',
+                   'data/processed/part_b_demography.csv']
     expected_inputs = {name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
                        for name in input_paths if (ROOT/name).exists()}
     cells = [nbf.v4.new_markdown_cell('# Economic narratives and consumer sentiment\n\n**Panagiotis Housos | ph2606 | AI Applications in Finance | Final Project**\n\nInformation cutoff: October 13, 2026. Human validation is not completed; independent AI reviews are explicitly separate. Acquisition and model scoring run separately. The cells below rerun analysis from local frozen inputs. Raw datasets are excluded from Git under the established submission policy.'),
              nbf.v4.new_code_cell("from pathlib import Path\nimport json\nimport hashlib\nimport pandas as pd\nfrom IPython.display import display, Image\nROOT = Path.cwd()\nassert (ROOT / 'src/economics.py').exists(), 'Execute from the project root.'\nexpected_inputs = " + repr(expected_inputs) + "\nfor name, expected in expected_inputs.items():\n    path = ROOT / name\n    assert path.exists(), f'Acquire required input: {name}'\n    assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, f'Input changed: {name}. Rerun analysis and rebuild deliverables before executing this notebook.'\npd.set_option('display.max_columns', 14)\npd.set_option('display.max_colwidth', 70)\npd.set_option('display.precision', 4)"),
              nbf.v4.new_markdown_cell('## Recompute the frozen empirical analysis\n\nThe economic feature matrix uses historical ALFRED snapshots. Media reconstruction is retrospective and subject to source selection and original-wording limitations. The package never invents missing records, exposure or human labels.'),
-             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics'], ['-m', 'src.investing', 'analyze'], ['-m', 'src.bias_trading', 'analyze']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary analysis and exploratory dynamics recalculated from acquired observations.')")]
+             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics'], ['-m', 'src.investing', 'analyze'], ['-m', 'src.bias_trading', 'analyze'], ['scripts/08_validation_tables.py'], ['-m','src.external_validation','score'], ['-m','src.rubric_evidence'], ['-m','src.part_b_demography','build'], ['-m','src.reader_evidence']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary study and separately identified extensions recalculated from frozen inputs.')")]
     cells += [nbf.v4.new_markdown_cell('## Persistence and differenced-model sensitivity\n\nThese checks were added after the primary analysis and are exploratory. ADF and KPSS have different null hypotheses; structural breaks limit either interpretation. The differenced models use the same 44 test months and a separately identified two-contrast loss-test family.'),
               nbf.v4.new_code_cell("display(pd.read_csv(ROOT / 'outputs/tables/dynamics_unit_root.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_differenced_metrics.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_loss_hac.csv'))")]
     cells += [nbf.v4.new_markdown_cell('## Independent AI diagnostic: class and source concordance\n\nThese are AI development references, not human ground truth. The original pool has 300 items; final-corpus eligibility and mixed/uncertain exclusions are explicit. Small source/class cells have unstable estimates. Required human validation remains pending.'),
-              nbf.v4.new_code_cell("path = ROOT / 'outputs/ai_diagnostic_validation_metrics.json'\nai = json.loads(path.read_text()) if path.exists() else {}\nif ai:\n    display(pd.Series({k: ai.get(k) for k in ['label_type','completed_independent_pairs','tone_agreement','tone_cohens_kappa','annotation_pool_final_eligible_n','annotation_pool_final_excluded_n','human_specific_requirement_satisfied']}))\n    rows, classes = [], []\n    for annotator, models in ai['model_reference_concordance'].items():\n        for model, entry in models.items():\n            for source, result in entry['by_source'].items():\n                rows.append({'reference': annotator, 'model': model, 'source': source, 'n': result['n'], 'agreement': result['agreement'], 'macro_F1_concordance': result['macro_f1_reference_concordance']})\n            for label, result in entry['class_concordance'].items():\n                classes.append({'reference': annotator, 'model': model, 'class': label, **result})\n    display(pd.DataFrame(rows))\n    display(pd.DataFrame(classes))\nelse:\n    print('Independent AI diagnostic inputs are unavailable in this clone; no human labels are inferred.')"),
+              nbf.v4.new_code_cell("ai = json.loads((ROOT/'outputs/ai_diagnostic_validation_metrics.json').read_text())\ndisplay(pd.Series({k: ai.get(k) for k in ['label_type','completed_independent_pairs','tone_agreement','tone_cohens_kappa','annotation_pool_final_eligible_n','annotation_pool_final_excluded_n','human_specific_requirement_satisfied']}))\nfor name in ['cohorts','model_concordance','class_concordance','source_concordance','confusion_matrices','dimension_agreement']:\n    print('Explicit original and final populations:', name)\n    display(pd.read_csv(ROOT / ('outputs/tables/validation_'+name+'.csv')))"),
               nbf.v4.new_markdown_cell('## Political-name and source-label stress tests\n\nThe original text is held constant except for the specified change. Changed names can change meaning. Class switches do not prove political discrimination or factual bias.'),
               nbf.v4.new_code_cell("media_summary = json.loads((ROOT / 'outputs/media_summary.json').read_text())\ndisplay(pd.DataFrame(media_summary['perturbation']['variant_comparisons']))\nprint('Source-prefix paired mean absolute tone difference:', media_summary['perturbation']['source_pair_mean_absolute_delta'])\nprint('Factual-calibration status:', media_summary.get('factual_calibration'))")]
+    cells += [nbf.v4.new_markdown_cell('## External human-consensus transfer benchmark\n\nFinancial PhraseBank company/investor sentences differ from US economic titles. The frozen class-balanced 300 examples and unknown training overlap prevent claims of a pristine holdout. These are published human labels, not two new annotators for this project. Target-domain human validation remains incomplete.'),
+              nbf.v4.new_code_cell("for name in ['models','classes','confusion']:\n    display(pd.read_csv(ROOT/('outputs/tables/external_validation_'+name+'.csv')))\nexternal = json.loads((ROOT/'outputs/tables/external_validation_summary.json').read_text())\nprint('Limitations:', *external['limitations'], sep='\\n- ')\nassert external['human_specific_requirement_satisfied'] is False"),
+              nbf.v4.new_markdown_cell('## Statistical evidence and prospective power\n\nFull-history coefficient associations, chronological forecast comparisons and sample-size planning are different estimands. The planned experiment has not been run.'),
+              nbf.v4.new_code_cell("for name in ['loss_contrasts','tone_associations','survey_components','economic_sensitivities','media_sensitivities','dynamic_sensitivities','forecast_skill','power_plan']:\n    print(name)\n    display(pd.read_csv(ROOT/('outputs/tables/rubric_'+name+'.csv')))"),
+              nbf.v4.new_markdown_cell('## Part B source data and published summaries\n\nDemography measures births, not cognition. The AI learning chart transcribes published regression summaries; it is not a new participant-level analysis. The manifesto is an argument distinct from Part A estimates.'),
+              nbf.v4.new_code_cell("display(pd.read_csv(ROOT/'outputs/tables/part_b_demography_comparison.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_ai_published_effects.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_attention_published.csv'))\ndisplay(pd.read_csv(ROOT/'outputs/tables/reader_evidence_sources.csv'))")]
     if (ROOT/'outputs/tables/provider_bias.csv').exists():
         cells += [nbf.v4.new_markdown_cell('## News-provider comparison: matched official releases\n\nA separate supplemental sample includes CNBC and Fox brands. The provider bars use a common set of releases and a defined peer reference. This is a relative negative-framing proxy, not a factual or ideological rating. The original forecast corpus and 300-title AI review remain separate; the new providers do not have independent human validation.'),
                   nbf.v4.new_code_cell("provider_table = pd.read_csv(ROOT / 'outputs/tables/provider_bias.csv')\ndisplay(provider_table)\nprovider_summary = json.loads((ROOT / 'outputs/tables/provider_bias_summary.json').read_text())\ndisplay(pd.Series(provider_summary, name='provider_comparison_protocol'))")]
@@ -264,8 +278,11 @@ if __name__ == '__main__':
     (ROOT / 'docs').mkdir(exist_ok=True)
     build_human_packet()
     build_figures()
+    build_reader_evidence()
+    build_demography()
+    build_rubric_evidence()
     content = sections()
-    assert len(content) == 12
+    assert len(content) > 12 and any(title.startswith('Part B') for title,_ in content)
     build_report(content)
     build_notebook(content)
     build_dashboard()
@@ -277,4 +294,9 @@ if __name__ == '__main__':
     shutil.copyfile(ROOT/'outputs/investment_strategy.pdf',ROOT/'Investment_Strategy_Comparison.pdf')
     shutil.copyfile(ROOT/'outputs/bias_trading.png',ROOT/'Bias_Trading_Comparison.png')
     shutil.copyfile(ROOT/'outputs/bias_trading.pdf',ROOT/'Bias_Trading_Comparison.pdf')
-    print('Built 12-page report source, notebook, dashboard, and presentation.')
+    for source, target in [('part_b_demography_comparison','Reader_Demography_Comparison'),
+                           ('part_b_fertility_trends','Reader_Fertility_Trends'),
+                           ('reader_ai_learning','Reader_AI_Learning')]:
+        for extension in ['png','pdf']:
+            shutil.copyfile(ROOT/'outputs'/f'{source}.{extension}',ROOT/f'{target}.{extension}')
+    print(f'Built {len(content)}-section integrated report source, notebook, dashboard and presentation.')

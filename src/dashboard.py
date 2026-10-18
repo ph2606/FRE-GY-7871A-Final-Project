@@ -500,6 +500,15 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
         html += '<p>' + escape(factual.get('interpretation','')) + '</p>'
     if ai:
         html += f'<p>Independent AI development review: {ai.get("completed_independent_pairs",0)} original pairs; agreement {100*ai.get("tone_agreement",0):.1f}%, kappa {ai.get("tone_cohens_kappa",0):.3f}. Final-corpus eligible subset: {ai.get("annotation_pool_final_eligible_n",0)}. These are diagnostic concordance statistics and do not satisfy the two-human requirement.</p>'
+        validation_models=frame(OUT/'validation_model_concordance.csv')
+        if not validation_models.empty:
+            final=validation_models.loc[validation_models.cohort.eq('final_eligible_pool'),
+                ['reference','model','n','agreement','macro_f1_concordance']].copy()
+            final=final.rename(columns={'n':'Three-class items','agreement':'AI-reference agreement','macro_f1_concordance':'AI-reference macro F1'})
+            html += '<details><summary>Final-eligible AI reference results, with explicit denominators</summary><p>AI A excludes46 mixed/uncertain answers from277 eligible items; AI B excludes45. These are not human accuracy estimates. Full class and source tables are in the notebook.</p>'+table_html(final)+'</details>'
+    external=frame(OUT/'external_validation_models.csv')
+    if not external.empty:
+        html += '<details><summary>Separate published human-label transfer test</summary><p>300 class-balanced Financial PhraseBank company-news sentences. Context model accuracy53.7%, VADER51.0%; the context model overuses neutral. Investor labels and wording valence differ; training overlap is unknown. This benchmark does not complete the project\'s required human annotation.</p>'+table_html(external)+'</details>'
     html += '</div>'
     html += '<div class="card scroll"><h2>Model performance and interval coverage</h2><p>Models must be compared on the same months. The nominal 95% intervals require empirical coverage checks; structural change can cause undercoverage.</p>'
     common_metrics=metrics.loc[(metrics['sample']=='common_media_oos') & metrics.target.eq('sentiment')] if not metrics.empty else metrics

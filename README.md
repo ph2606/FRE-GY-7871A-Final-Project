@@ -2,7 +2,7 @@
 
 Panagiotis Housos | ph2606 | AI Applications in Finance | Fall 2026
 
-This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The economic information cutoff is **October 13, 2026**, America/New_York. The **October 15 revision** adds a separate provider comparison of January–September releases, and the **October 17 extension** evaluates investment allocations. Open [the executed notebook](final_project.ipynb) for the computed report and aggregate exhibits. The local deliverables are a 12-page LaTeX PDF, an interactive standalone dashboard, a standalone provider bar graph, and a PowerPoint with speaker notes.
+This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The economic information cutoff is **October 13, 2026**, America/New_York. The October 15 revision adds a provider comparison; October 17 adds investment experiments. The **October 18 integrated revision** strengthens statistical uncertainty and validation, adds a separate published human-consensus benchmark, and integrates **Part B: a manifesto for independent judgment** with primary research and World Bank demographic charts. Open [the executed notebook](final_project.ipynb) for computed tables and exhibits. Local deliverables include the extended PDF, standalone interactive dashboard, provider graph and narrated PowerPoint. The report exceeds the original page limit at the user's explicit request; the presentation keeps the 6–8 minute target.
 
 People can feel worse about the economy than official numbers suggest. This project asks whether selected news wording helps explain that difference, then tests three aggressive trading ideas using the wording alone. The economic-model answer changes when we account for persistent survey scores and changes in survey methods. The news measure does not reliably improve forecasts. Two wording-only trading rules make a historical profit after assumed costs, but all three finish below an ordinary S&P 500 fund and suffer larger worst percentage losses. These findings do not prove that news caused people's feelings or establish a reliable way to earn future profits.
 
@@ -98,6 +98,12 @@ $projectPython = '.\.venv\Scripts\python.exe'
 & $projectPython -m src.dynamics
 & $projectPython -m src.investing all
 & $projectPython -m src.bias_trading all
+& $projectPython scripts/08_validation_tables.py
+& $projectPython -m src.external_validation prepare
+& $projectPython -m src.external_validation score
+& $projectPython -m src.part_b_demography all
+& $projectPython -m src.reader_evidence
+& $projectPython -m src.rubric_evidence
 & $projectPython scripts/04_build_deliverables.py
 & $projectPython scripts/05_execute_notebook.py
 xelatex -interaction=nonstopmode -halt-on-error report.tex

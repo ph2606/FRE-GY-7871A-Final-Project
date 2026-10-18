@@ -1,6 +1,7 @@
 """One computed narrative shared by the report, notebook and presentation."""
 from pathlib import Path
 import json
+import re
 import numpy as np
 import pandas as pd
 
@@ -205,7 +206,7 @@ def perturbation_text(summary):
             "The scoring therefore hides source names. A changed name can also change meaning, so these checks alone do not prove political unfairness.")
 
 
-def sections():
+def original_sections():
     e = evidence()
     latest = e['primary'].iloc[-1]
     gap = e['recent'].gap.mean()
@@ -344,7 +345,7 @@ def sections():
     return pages
 
 
-def slides():
+def original_slides():
     e = evidence()
     latest = e['primary'].iloc[-1]
     providers = provider_evidence()
@@ -440,3 +441,155 @@ def slides():
 
     ]
     return deck
+
+
+def sections():
+    """The empirical study, integrated manifesto, then clearly named supplements."""
+    old = original_sections()
+    e = evidence()
+    bias, trading = bias_trading_evidence()
+    # Preserve the detailed earlier trading work as a supplement to the main test.
+    appendix_rules = ('Appendix A / Three aggressive wording-only ideas', old[10][1][3:6] + [
+        old[11][1][1],
+        table(['Teaching example','Usual B = +10; previous B = +25; latest B = +20'], [
+            ['Fade','The latest score is above usual: hold UPRO.'],
+            ['Follow','The latest score is above usual: hold SPXU.'],
+            ['Wait','The score is above usual and falling: hold UPRO.'],
+            ['Tie, missing input or no Wait condition','Hold BIL. The example is hypothetical, not a selected successful trade.']], [.37,.63]),
+        p('The fixed three-source score uses 1,923 titles across 81 complete months. Each decision uses only earlier completed titles, with the usual level calculated from twelve months preceding the signal month. All 68 decisions and fund weights are saved. The roster and rules were fixed before their new returns were calculated, after earlier project findings were known. This is exploratory historical testing, not a fresh future holdout.')])
+    appendix_results = ('Appendix B / What happened to the trading ideas?', [
+        old[11][1][2], old[11][1][3], old[11][1][4], old[11][1][5],
+        p('No rule establishes an advantage over SPY. The three same-date mean-return tests use a Holm correction; none rejects equal mean returns at 5%. They are not alpha tests: daily leveraged exposure changes what is being compared. The notebook preserves 0, 10 and 25 basis-point cost checks, all six benchmark portfolios and the exact daily paths.'),
+        p('The earlier economy-and-price-trend allocation is a separate experiment: net annual growth was 5.52%, versus 9.17% for monthly 60% SPY / 40% BIL over January 2015-October 2026. The fixed mix is preferred only after this retrospective comparison. The headline gap, survey gap, matched-provider bars and price-trend signals are different quantities and are never substituted for each other.'),
+        p('Financial conclusion: use the monitor to question a consumer-demand narrative and stress-test a forecast. These results do not justify an aggressive position based on measured wording alone. Both profitable and losing simulations are retained, with costs and large drawdowns visible. The notebook contains the older allocation chart and full protocols; no trades were placed.')])
+    # Restore the main report's emphasis on the highest-weight grading criteria.
+    old[0][1][3] = p(verdict(e) + ' Statistical uncertainty does not establish a reliable gain. The provider comparison asks whether outlets describe the same releases differently; it cannot measure dishonesty or effects on readers.')
+    old[0][1][4]['rows'][-1] = ['How to read this report','Part A: empirical study; Part B: evidence-led manifesto; appendices: all aggressive trading tests.']
+    old[0][1][-1] = p('**Main conclusion.** This sample does not establish that media bias explains the sentiment gap. Household conditions, survey methods, persistence and measurement remain plausible explanations. Part B asks how readers can strengthen independent judgment; its broader arguments are distinguished from the results of Part A. The human-annotation requirement remains unmet.')
+    for title, items in old:
+        for item in items:
+            if item['type'] == 'p':
+                item['text'] = item['text'].replace('the course\'s no-data-upload rule', 'the project\'s established no-data-sharing policy').replace('the course\u2019s no-data-upload rule', 'the project\'s established no-data-sharing policy').replace('Page 11 compares', 'The provider comparison examines').replace('page 12', 'the trading appendices')
+    # Add the exact estimand and fitting procedure next to the beginner explanation.
+    old[2][1].append(p('**Technical specification.** At origin t, expanding ordinary least squares (OLS) fits sentiment on a constant, the latest released U-3, headline PCE inflation and quarterly real-GDP growth. OLS chooses coefficients to minimize squared past errors. Rebuild at each origin with at least 60 earlier monthly rows for the long panel. The gap g(t) = observed sentiment(t) - predicted sentiment(t) is an out-of-sample residual, not an estimated psychological bias. All three survey outcomes use their own fitted model.'))
+    old[7][1][-1] = p(ai_review_text())
+    models = csv('validation_model_concordance.csv')
+    classes = csv('validation_class_concordance.csv')
+    sources = csv('validation_source_concordance.csv')
+    assert not models.empty, 'Build explicit validation cohorts before report generation.'
+    keep = models.loc[models.cohort.eq('final_eligible_pool')]
+    model_rows = [[r.reference.replace('annotator_', 'AI '), 'Context model' if r.model == 'contextual' else 'VADER word list',
+                   int(r.n), fmt(100*r.agreement,1)+'%', fmt(r.macro_f1_concordance,3)] for r in keep.itertuples()]
+    aclass = classes.loc[classes.cohort.eq('final_eligible_pool') & classes.reference.eq('annotator_a')]
+    class_rows = []
+    for label in ['negative','neutral','positive']:
+        c = aclass.loc[aclass.reference_class.eq(label)].set_index('model')
+        class_rows.append([label.capitalize(), int(c.loc['contextual','support']), fmt(c.loc['contextual','f1'],3), fmt(c.loc['dictionary','f1'],3)])
+    asource = sources.loc[sources.cohort.eq('final_eligible_pool') & sources.reference.eq('annotator_a')]
+    source_rows = []
+    for source in sorted(asource.source.unique()):
+        c = asource.loc[asource.source.eq(source)].set_index('model')
+        source_rows.append([source, int(c.loc['contextual','n']), fmt(c.loc['contextual','macro_f1_concordance'],3), fmt(c.loc['dictionary','macro_f1_concordance'],3)])
+    validation = ('Validation results / Keep the reference population visible', [
+        p('These tables use only the final-eligible part of the AI review. Of the original 300 titles, 277 survive final relevance checks; 23 remain archived as excluded. AI A has 231 positive/neutral/negative reference answers and 46 mixed/uncertain answers; AI B has 232 and 45. The three-class comparisons exclude the latter rather than relabeling them. These are development diagnostics against AI judgments, not estimates of human accuracy.'),
+        table(['AI reference','Method','n','Agreement','Macro-F1'], model_rows, [.18,.30,.10,.20,.22]),
+        p('F1 balances precision (how often a predicted class matches the reference) and recall (how many reference items in that class were found). Macro-F1 averages the three class scores equally. Below, both tables use AI A; the notebook shows AI B, precision, recall, confusion matrices and the original cohort as well.'),
+        table(['Reference class','n','Context F1','VADER F1'], class_rows, [.32,.14,.27,.27]),
+        table(['Source, final-eligible','n','Context macro-F1','VADER macro-F1'], source_rows, [.37,.11,.26,.26]),
+        p('Neutral cases are harder than the overall average suggests, and VADER performs better for the Reuters subset against AI A. Small cells, correlated machine errors and review-driven development limit interpretation. Source-specific performance is not evidence of publisher dishonesty. No CNBC or Fox titles occur in this original validation pool.')])
+    # A separate published human-consensus transfer test is never a substitute
+    # for the two missing annotators on the project corpus.
+    external = csv('external_validation_models.csv')
+    assert len(external) == 2, 'The external test must be completed before report generation.'
+    xclasses = csv('external_validation_classes.csv')
+    old[7] = ('Validation / Human requirements and an external stress test', [
+        p('**The required project annotation is incomplete.** The assignment asks two independent people to label at least 300 stratified items. Completed human labels are unavailable. The blinded 300-item worksheets, evidence guide, agreement calculation and adjudication workflow are ready. Separate AI reviews are identified as AI throughout; they do not satisfy that requirement. No target-corpus human accuracy or agreement is invented.'),
+        p('To test the sentiment model against existing human judgments, we added a separate Financial PhraseBank benchmark. Its authors used multiple annotators to label company-news sentences from an investor perspective. Before scoring, we fixed 300 unique unanimous-consensus sentences, 100 per class, selected by deterministic hash. No thresholds were tuned on these results. This is an external transfer test, not a substitute for human labels on our economic titles.'),
+        table(['External method; n = 300','Accuracy','95% Wilson range','Macro-F1'],
+              [['Context model' if r.model == 'contextual' else 'VADER word list', fmt(100*r.external_human_reference_accuracy,1)+'%', f'{100*r.accuracy_wilson_lower:.1f}-{100*r.accuracy_wilson_upper:.1f}%', fmt(r.macro_f1,3)] for r in external.itertuples()], [.35,.17,.28,.20]),
+        table(['Human reference class','n','Context recall','VADER recall'],
+              [[label.capitalize(),100,fmt(float(xclasses.loc[xclasses.model.eq('contextual') & xclasses.human_class.eq(label),'recall'].iloc[0]),2),fmt(float(xclasses.loc[xclasses.model.eq('dictionary') & xclasses.human_class.eq(label),'recall'].iloc[0]),2)] for label in ['negative','neutral','positive']], [.34,.12,.27,.27]),
+        p('The context model calls 232 of 300 items neutral. Its apparently high negative/positive precision coexists with poor recall: it misses many human-labeled examples. The small accuracy difference does not establish a clear advantage over VADER. Company/investor labels differ from wording valence, the balanced unanimous sample changes prevalence and difficulty, and model-training overlap is unknown. These are serious limits to transfer, not evidence that the economic-title accuracy equals 53.7%.'),
+        p('Wilson ranges describe binomial agreement uncertainty conditional on this selected sample; they omit unknown sentence/source dependence and domain shift. Full class scores and confusion matrices are in the notebook. The next page returns to the project\'s AI-only diagnostic, with its own explicitly different reference population.'),
+        p('Primary source: [Malo et al., Good Debt or Bad Debt (2014; author preprint)](https://arxiv.org/abs/1307.5336v2); [author distribution](https://huggingface.co/datasets/takala/financial_phrasebank). Dataset license: CC-BY-NC-SA-3.0. The frozen sampling protocol and license files are recorded; sentence-level data remain local.')])
+    old[8][1].insert(1, p('**Model comparison.** All three core models use expanding OLS, a constant and identical 44 test months. M2 adds one-month-lagged source-balanced tone; M3 adds three-year cumulative prices and real disposable-income growth. M1 + household controls isolates what media adds beyond those controls. Lagged-survey models test persistence. Predictive value means lower later forecast loss; none of these coefficients identifies a causal news effect.'))
+    old[8][1].pop()  # Full coefficient stability is on the following uncertainty page.
+    # The detailed numerical uncertainty tables are filled from frozen analyses.
+    stats = statistical_page()
+    old[9][1][1] = p('The assignment permits observational analysis with a detailed causal proposal. Our proposed study has three equally accurate summaries of one release: a balanced fact sheet, an emphasis on cumulative prices, and an emphasis on annual inflation. Keep numbers, source, length and difficulty identical. The primary comparison is price-level minus inflation-rate framing on a next-day sentiment-related composite, adjusting for its baseline and randomization blocks. No participants were recruited.')
+    old[9][1][2] = p('For a prospective effect of 0.25 standard deviations, a two-sided 5% test and 80% power, the finite-sample calculation requires 253 observed outcomes per compared arm. Plan 317 randomized per arm to allow 20% missing outcomes: 951 across three arms. These are planning assumptions, not results or an achieved precision guarantee. Analyze original assignment (intention to treat), report attrition, and apply Holm correction to prespecified secondary contrasts. The balanced arm and immediate/one-week checks assess interpretation and persistence; research approval and funding are prerequisites.')
+    provider_page = ('Provider comparison / The same releases, different wording', old[10][1][:3] + [
+        p('This small provider sample is an explicit benchmark for relative framing, separate from the long monthly forecast corpus. It partly holds news events constant, but not which true components each outlet chooses to emphasize. An equivalent-surprise test would additionally require archived pre-release expectations. Realized good or bad outcomes cannot be relabeled as economic surprises without that information.'),
+        p('The score is negative-headline share minus the equally weighted mean for other sampled providers, then averaged equally across the common releases. A positive bar is extra negative wording relative to these peers. The 95% month-resampling ranges describe stability conditional on the captured titles and labels; they do not include retrieval or classifier error. Zero is a peer reference, not a universal neutral point.'),
+        p('The separate acquisition was October 15, 2026. Main economic information remains frozen October 13. October 23\'s final survey and October 29\'s BEA price/output releases are later updates; election timing alone establishes no cause. The dashboard retains release dates, source counts, forecast intervals and model comparisons.')])
+    conclusion = ('Part A / Answers, limitations and financial use', [old[11][1][0],
+        p('**What the study establishes.** It provides an auditable economic-data correction, chronological forecasting comparisons, a transparent national/local/social headline sample and an explicit same-release provider benchmark. Text measures add little predictive information here, and uncertainty does not establish a reliable improvement. A rigorous null can be useful: it prevents a story about biased readers or publishers from outrunning the evidence.'),
+        p('**What remains incomplete.** Two independent human annotators have not labeled the 300-item project packet. Content retrieval is retrospective, the contextual model postdates early titles, source composition changes, political and household microdata are unavailable, and no actual respondent exposure is observed. These limitations prevent a validated source ranking or causal national media estimate. A published external benchmark can help test model transfer but cannot remove these gaps.'),
+        p('**Financial implication.** Use a persistent model gap as a prompt to review household purchasing power, uncertainty, survey methods and new releases before changing a consumer-demand scenario. The aggressive wording-only rules are fully reported in the appendices and notebook: two made money historically, all three lagged ordinary stocks and suffered deeper falls. There is no established profitable trading edge.'),
+        p('**Reproduction and ethics.** The executed notebook recomputes estimates from frozen local inputs; the source repository and submission archive include code, aggregate outputs, exact versions and protocols. Raw/derived item data and model weights remain local under the project\'s established policy. Source access, attribution and restrictions are recorded in docs/DATA_ACCESS_AND_ETHICS.md. No participants were recruited, trades placed or national intelligence scores inferred.'),
+        p('Part B now changes the object of inquiry from published wording to the conditions that help readers judge truth. Its manifesto is an explicitly labeled argument, backed and challenged by independent literature. It is not an empirical conclusion that the Michigan gap was caused by declining intelligence.')])
+    from part_b_content import sections as part_b_sections
+    claims = pd.read_csv(ROOT/'data/processed/factual_calibration_checks.csv')
+    corpus = pd.read_csv(ROOT/'data/processed/media_scores.csv')
+    counts = corpus.groupby('source_group').size()
+    calibration = ('Calibration / Check a fact before judging its framing', [
+        p('A negative sentence can be true, and a reassuring sentence can omit a relevant fact. We therefore keep tone and factual calibration separate. Here is a small, purposive check of unemployment percentages, using the archived BLS release for the same publication day. It checks a number at the precision in a title, not the entire story.'),
+        table(['Captured title source / day','Period in BLS release','Title percentage','Official U-3'],
+              [[r.source+' / '+str(r.published_at)[:10],str(r.official_observation_period),fmt(r.claim_value_percent,1)+'%',fmt(r.official_value_percent,1)+'%'] for r in claims.head(4).itertuples()], [.40,.22,.19,.19]),
+        p(f"All {len(claims)} selected percentages numerically match. Only {int(claims.period_explicit_in_title.sum())} titles name a month; none is fully verified for definition, period and intraday release vintage. Feed timestamps can precede the official release even when our conservative availability date is later. The correct description is numeric alignment, not an 8/8 factual-accuracy estimate, and not an estimated error rate for the full sample."),
+        p('Official references for these examples: [April 2020 release](https://www.bls.gov/news.release/archives/empsit_05082020.htm), [May 2020 release](https://www.bls.gov/news.release/archives/empsit_06052020.htm), [March 2022 release](https://www.bls.gov/news.release/archives/empsit_04012022.htm), [July 2024 release](https://www.bls.gov/news.release/archives/empsit_08022024.htm). The local ledger preserves all eight title excerpts, definitions and unresolved checks.'),
+        table(['Corpus group','Titles; whole captured sample','Scope'], [
+            ['National',f"{int(counts['national']):,}",'AP, NPR and Reuters; no measured respondent exposure.'],
+            ['Local',f"{int(counts['local']):,}",'Gothamist, Texas Tribune and Colorado Sun; geography and topics differ.'],
+            ['Social',f"{int(counts['social']):,}",'Hacker News titles; selected users, votes at download time, unresolved automation.']], [.20,.29,.51]),
+        p('The sampling cap is twelve titles per source/month after filtering; ranked search can already omit material before that cap. Missing coverage is visible in the dashboard. Source balancing reduces volume dominance but does not make the sample representative. We use no individual Michigan records, identify no social users in outputs and estimate no demographic effects from unavailable data.'),
+        p('Public access does not grant blanket permission to republish news. The project stores the title-level analytical inputs locally and publishes code and aggregates. Model and dataset attributions, access boundaries, privacy treatment and the separate external benchmark license are documented in docs/DATA_ACCESS_AND_ETHICS.md.')])
+    content = old[:7] + [calibration, old[7], validation, old[8], stats, old[9], provider_page, conclusion] + part_b_sections(p, table, figure, fmt) + [appendix_rules, appendix_results]
+    return [(re.sub(r'^\d+\.\s*', '', title), items) for title,items in content]
+
+
+def statistical_page():
+    losses = csv('rubric_loss_contrasts.csv')
+    items = [p('A tiny change in the average error can occur by chance, especially when neighboring months share shocks. We compare paired squared forecast errors from exactly the same 44 months. Units are mean squared survey points, not changes in RMSE. A negative difference favors headlines. The uncertainty calculation allows errors up to three months apart to be related: heteroskedasticity and autocorrelation consistent (HAC), bandwidth 3. Intervals are pointwise; the BH correction applies to q-values only. Neither corrects omitted variables or missing exposure data.')]
+    if not losses.empty:
+        items.append(table(['Comparison: added minus baseline','Mean loss difference','95% HAC interval','BH q'],
+                           [[{'M2_economic_media':'M2 - M1', 'M3_economic_media_controls':'M3 - economy + household', 'AR_macro_media':'Lagged survey + media - without media'}[r.augmented], fmt(r.mean_squared_loss_difference,3), f'[{r.loss_difference_lower_95:.2f}, {r.loss_difference_upper_95:.2f}]', fmt(r.bh_qvalue_existing_three_test_family,3)] for r in losses.itertuples()], [.43,.18,.25,.14]))
+    else:
+        tests = csv('predictive_loss_tests.csv')
+        items.append(table(['Added headlines to','n','Mean squared-loss difference','BH q'], [[r.baseline,int(r.n),fmt(r.mean_squared_loss_difference,3),fmt(r.bh_qvalue,3)] for r in tests.itertuples()], [.38,.10,.34,.18]))
+    items += [p('Benjamini-Hochberg (BH) adjusts this declared family of three media-addition comparisons for multiple testing. All q-values are 0.949; none supports a reliable gain at a 5% threshold. A q-value is not the probability that the null hypothesis is true. Small samples, nested forecast models and specification choices make these exploratory uncertainty estimates rather than decisive evidence of zero effect.'),
+              table(['Change one assumption','Earlier / reference RMSE','Changed RMSE','Meaning'], [
+                  ['Use VADER word list', '11.855', '12.003', 'No gain from the simpler wording measure.'],
+                  ['Exclude social posts', '11.855', '11.929', 'The conclusion depends partly on source definition.'],
+                  ['Train only after 2022; n = 9', '4.527', '4.576', 'Reduces early-model lookahead; very short test.'],
+                  ['Predict monthly changes', '4.2227', '4.2234', 'Adding tone still gives no meaningful gain.']], [.35,.19,.18,.28]),
+              p(stability_text()),
+              p('In a separate fitted association over 80 historical months, a +0.1 shift in tone is associated with +1.66 survey points in M2, with a HAC(3) 95% interval from -1.14 to +4.46. This full-history coefficient is not an out-of-sample gain or a causal effect. Its wide interval and unstable rolling coefficients argue against treating the point estimate as a dependable response.'),
+              p('Prediction intervals ask where one future survey value might fall. For long-history M1, the empirical interval uses only errors before each origin, with at least 24 earlier errors. It never uses that month\'s answer to calibrate its own range. Coverage is 78.4% over 116 calibrated tests, a different sample from the 44-month comparison above. Nominal 95% is not a guaranteed probability.'),
+              p('The notebook also reports seasonality, rolling windows, alternative GDP growth, publication-lag and source-weight checks, all with their actual evaluation samples. These checks are exploratory and were not used to search for a favorable headline model. Full coefficients, HAC intervals, diagnostics and the experimental power calculation appear in docs/STATISTICAL_EVIDENCE.md and docs/CAUSAL_POWER_PLAN.md.')]
+    return ('Uncertainty / Does the apparent gain survive scrutiny?', items)
+
+
+def slides():
+    from part_b_content import slides as part_b_slides
+    deck = original_slides()
+    core = deck[:9]
+    # Spoken detail is kept within the assignment's 6-8 minute window even
+    # though the user explicitly requested an extended integrated report.
+    notes = [
+        'People can hear that the economy is growing and still struggle with bills. Michigan sentiment is a survey score about finances and buying conditions, not a percentage of happy people. We test household pressures, news wording and measurement problems. Part A reports the empirical evidence; Part B is a manifesto about independent judgment. The economic cutoff is October 13, 2026, before the election.',
+        'A forecast must use information published before its answer. We recover earlier economic releases. The spreadsheet uses core inflation, leaving out food and energy, while the assignment requires headline inflation. It also supplies quarterly output that was not yet officially released. We correct the price measure and exclude that unavailable output. October sentiment is preliminary and stays separate from completed final months.',
+        'The first model uses unemployment, prices and output to predict a later survey. Actual minus predicted is the gap. September is 48.1 minus 70.7, about minus 22.6 points. This is a forecast mistake, not proof of irrational readers. The interval often misses the answer; simply repeating the previous survey is a much stronger long-period benchmark.',
+        'A basket rising from one hundred to one hundred ten, then one hundred twelve dollars and twenty cents has slower inflation but higher prices. We therefore consider accumulated prices and income after inflation. Housing, debt and insecurity can still be missing. Michigan also changed survey methods. Allowing for that change shrinks the gap, without proving the method caused it.',
+        'The sample has 3,787 titles from national news, local news and Hacker News. Each source and group receives balanced weight. We measure published titles, not full articles or what respondents actually saw. Tone means positive or negative wording. A negative headline can accurately report bad news. Search limits, changing headlines and missing outlets restrict what the sample represents.',
+        'The bars compare six providers describing six shared official reports. If one has forty percent negative headlines and peers average thirty percent, its score is plus ten percentage points. Zero means matching these peers. The lines show variation across sampled months, excluding retrieval and label errors. Different truthful details can produce different wording. This is not a measure of lying or effects on readers.',
+        'All models face the same 44 test months. Adding earlier headline tone lowers the error score by only 0.01 points, or 0.04 when earlier sentiment is included. Three adjusted statistical tests have q-values of 0.949; none establishes a reliable improvement. Word-list, source and monthly-change checks do not strengthen the result. We report uncertainty rather than declaring a media effect.',
+        'The required two humans have not labeled the project\'s 300 items. Two AI reviews and a separate published human-labeled company-news benchmark provide diagnostics, but cannot replace that requirement. Final-eligible AI comparisons exclude mixed or uncertain cases and show class and source differences. Matching a machine reference is not human-checked accuracy. This limitation stays visible.',
+        'A stronger future test would randomly assign equally true summaries emphasizing high prices or slowing inflation, plus a balanced version. The main outcome is next-day outlook. A planning effect of one quarter of a standard deviation requires 253 observed responses per compared arm; allowing missing responses means 951 recruited across three arms. No experiment was run. A volunteer effect would still not establish a national effect.',
+    ]
+    for item, text in zip(core, notes):
+        item['notes'] = text
+    core[7]['points'] = ['Required: two people independently label 300 project titles', 'AI review: class and source variation reported', 'Published human benchmark: a separate transfer test', 'Target-corpus human validation remains incomplete']
+    trading = deck[-1]
+    trading['notes'] = 'We also kept three aggressive ideas using only earlier national-minus-local negative wording: fade it, follow it, or wait for a turn. These choose daily three-times up or inverse funds, or Treasury bills. Two made money, but all three grew less and fell more than ordinary stocks. Follow lost most of its starting money. Costs are included. The appendices preserve every rule and loss; no future profit is established.'
+    return core + [trading] + part_b_slides()

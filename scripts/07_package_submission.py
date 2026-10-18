@@ -22,6 +22,12 @@ ASSETS = (
     'Investment_Strategy_Comparison.pdf',
     'Bias_Trading_Comparison.png',
     'Bias_Trading_Comparison.pdf',
+    'Reader_Demography_Comparison.png',
+    'Reader_Demography_Comparison.pdf',
+    'Reader_Fertility_Trends.png',
+    'Reader_Fertility_Trends.pdf',
+    'Reader_AI_Learning.png',
+    'Reader_AI_Learning.pdf',
 )
 ROOT_SOURCE = {
     '.gitattributes', '.gitignore', 'AI_USE.md', 'README.md', 'SNAPSHOT.md',
@@ -86,6 +92,9 @@ Panagiotis Housos | ph2606 | AI Applications in Finance | Fall 2026
 The main study is frozen at October 13, 2026 (America/New_York). The separate
 provider comparison was collected retrospectively for the October 15, 2026 revision.
 The investing extension was developed October 17, with returns ending October 2.
+The October 18 integrated revision adds Part B's manifesto, literature evidence,
+World Bank demographic charts and an external published human-label benchmark.
+The user explicitly overrode the original report page cap; the talk keeps 6-8 minutes.
 These are study dates; the recorded checks below may have run later.
 
 Contents:
@@ -98,6 +107,8 @@ Contents:
 - `Provider_Bias_Comparison.png` and `.pdf`: standalone provider comparison figure.
 - `Investment_Strategy_Comparison.png` and `.pdf`: net wealth comparison.
 - `Bias_Trading_Comparison.png` and `.pdf`: three aggressive news-only experiments.
+- `Reader_Demography_Comparison`, `Reader_Fertility_Trends`, `Reader_AI_Learning`
+  in PNG/PDF: original Part B charts with sources and interpretation boundaries.
 - `final_project.ipynb`: executed notebook with {validation['notebook_code_cells']}
   code cells and {validation['notebook_errors']} recorded errors.
 - {source_count} tracked source/documentation files, including the notebook,

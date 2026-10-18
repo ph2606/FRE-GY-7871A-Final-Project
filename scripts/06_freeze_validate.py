@@ -82,10 +82,14 @@ def main():
     pdf = ROOT / 'Panagiotis_Housos_Final_Project.pdf'
     reader = PdfReader(pdf)
     pages = len(reader.pages)
-    assert 10 <= pages <= 12, pages
+    structure=json.loads((OUT/'report_structure.json').read_text())
+    assert pages == structure['expected_pages'] and pages > 12, (pages,structure)
+    assert structure['page_limit_override'].startswith('User explicitly requested')
     report_text = '\n'.join(page.extract_text() for page in reader.pages)
     assert 'anchoring' in report_text.lower(), 'Required mechanism discussion missing'
     assert 'October 15, 2026' in report_text, 'Supplement acquisition date missing'
+    assert 'Part B' in report_text and 'independent judgment' in report_text
+    assert '53.7%' in report_text and '0.949' in report_text, 'Validation/statistical evidence missing'
     tests = json.loads((OUT/'test_summary.json').read_text(encoding='utf-8'))
     assert tests['exit_code'] == 0 and tests['passed'] > 0, 'Tests have not passed'
     nb = nbformat.read(ROOT / 'final_project.ipynb', as_version=4)
@@ -101,7 +105,17 @@ def main():
             assert shape.top + shape.height <= prs.slide_height + 10
     words = sum(len(s.notes_slide.notes_text_frame.text.split()) for s in prs.slides)
     assert 6 <= words/140 <= 8, f'Narration duration {words/140:.2f} minutes'
+    native_path=OUT/'presentation_native_validation.json'
+    native=json.loads(native_path.read_text()) if native_path.exists() else None
+    if native:
+        assert native['pptx_sha256']==sha(ROOT/'Panagiotis_Housos_Final_Project.pptx')
+        assert native['text_overflows']==[] and native['slides']==len(prs.slides)
     html = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
+    browser_path=OUT/'browser_validation.json'
+    browser=json.loads(browser_path.read_text()) if browser_path.exists() else None
+    if browser:
+        assert browser['html_sha256']==sha(ROOT/'dashboard.html')
+        assert browser['runtime_exceptions']==[] and len(browser['charts'])==10
     assert 'Plotly.newPlot' in html and 'Human validation outstanding' in html
     assert 'Extra negative titles' in html and 'CNBC' in html and 'Fox News' in html
     chart_ids = re.findall(r'<div id="(chart-\d+)"', html)
@@ -177,6 +191,27 @@ def main():
     human = json.loads((OUT/'human_validation_metrics.json').read_text())
     assert human['human_specific_requirement_satisfied'] is False
     assert human['completed_independent_pairs'] == 0
+    external=json.loads((OUT/'tables/external_validation_summary.json').read_text())
+    assert external['human_specific_requirement_satisfied'] is False
+    assert all(row['n']==300 for row in external['comparisons'].values())
+    assert external['protocol_sha256']==sha(ROOT/'docs/EXTERNAL_VALIDATION_PROTOCOL.md')
+    assert external['freeze_sha256']==sha(ROOT/'data/processed/external_phrasebank_freeze.json')
+    assert external['predictions_sha256']==sha(ROOT/'data/processed/external_phrasebank_predictions.csv')
+    demographic=json.loads((OUT/'tables/part_b_demography_summary.json').read_text())
+    demography=pd.read_csv(ROOT/'data/processed/part_b_demography.csv')
+    assert len(demography)==18*34 and demographic['last_year']==2023
+    for source,target in [('part_b_demography_comparison','Reader_Demography_Comparison'),
+                          ('part_b_fertility_trends','Reader_Fertility_Trends'),
+                          ('reader_ai_learning','Reader_AI_Learning')]:
+        blob=(ROOT/f'{target}.png').read_bytes()
+        assert blob==(OUT/f'{source}.png').read_bytes()
+        assert (ROOT/f'{target}.pdf').read_bytes()==(OUT/f'{source}.pdf').read_bytes()
+        if source!='part_b_fertility_trends':
+            assert any(shape.image.blob==blob for slide in prs.slides for shape in slide.shapes
+                       if shape.shape_type==MSO_SHAPE_TYPE.PICTURE), 'Stale Part B slide chart'
+        cells=[c for c in codes if f'{source}.png' in c.source]
+        assert len(cells)==1 and any(base64.b64decode(o.get('data',{}).get('image/png',''))==blob
+                   for o in cells[0].get('outputs',[])), 'Stale Part B notebook chart'
     versions = environment_lock()
     inventory = []
     for folder in ['data','outputs']:
@@ -200,6 +235,8 @@ def main():
              f'- Media: {media_summary["n_titles"]:,} titles, {media_summary["months"]} months, {media_summary["complete_months"]} complete.',
              f'- Common media assessment: {summary["media_comparison"]["holdout_n"]} months.',
              '- Human-specific annotation requirement: **not satisfied**; AI diagnostics are separately identified.',
+             '- October 18 integrated revision: Part B manifesto, primary-source evidence and World Bank fertility/birth-rate exhibits; report page cap explicitly overridden by user.',
+             '- External published human-consensus benchmark: 300 company-news sentences, separate from target-corpus annotation; Cardiff accuracy53.7%, VADER51.0%, with important domain and training-overlap limits.',
              f'- Provider supplement: {len(provider)} providers and {int(provider.n_events.iloc[0])} identical releases; collected retrospectively for the October 15 revision.',
              '- Investing extension: developed retrospectively October 17; 141 monthly allocations, January 2, 2015–October 2, 2026; 10 bp per dollar traded including entry and liquidation.',
              '- The 60% SPY / 40% BIL benchmark is preferred after the comparison; positive historical profit is not demonstrated media alpha or a promise of future profit.',
@@ -214,6 +251,12 @@ def main():
             'data/processed/bias_trading_prices.csv','data/processed/bias_trading_monthly.csv','data/processed/bias_trading_signals.csv',
             'outputs/tables/bias_trading_metrics.csv','outputs/tables/bias_trading_summary.json','docs/BIAS_TRADING_PROTOCOL.md',
             'Bias_Trading_Comparison.png','Bias_Trading_Comparison.pdf',
+            'data/processed/part_b_demography.csv','outputs/tables/part_b_demography_summary.json',
+            'outputs/tables/external_validation_summary.json','docs/EXTERNAL_VALIDATION_PROTOCOL.md',
+            'outputs/tables/validation_summary.json','outputs/tables/rubric_evidence_summary.json',
+            'outputs/tables/reader_evidence_summary.json','outputs/report_structure.json',
+            'Reader_Demography_Comparison.png','Reader_Demography_Comparison.pdf',
+            'Reader_Fertility_Trends.png','Reader_Fertility_Trends.pdf','Reader_AI_Learning.png','Reader_AI_Learning.pdf',
             'Panagiotis_Housos_Final_Project.pdf','Panagiotis_Housos_Final_Project.pptx','final_project.ipynb','dashboard.html']
     for name in keys:
         path = ROOT/name
@@ -232,6 +275,8 @@ def main():
               'investment_cost_bps':10,'preferred_allocation':'60% SPY / 40% BIL; retrospective preference',
               'bias_trading_months':68,'bias_trading_rules':3,'bias_trading_return_end':'2026-10-02',
               'human_requirement_satisfied':False,'platform':platform.platform(),
+              'part_b_integrated':True,'report_page_limit_override':structure['page_limit_override'],
+              'native_powerpoint_review_bound':bool(native),'browser_review_bound':bool(browser),
               'python':platform.python_version(),'package_count':len(versions)}
     (OUT/'deliverable_validation.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     print(json.dumps(result,indent=2))
