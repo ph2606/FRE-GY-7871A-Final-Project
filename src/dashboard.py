@@ -147,6 +147,32 @@ def media_dimensions_figure(monthly):
     return date_axes(fig)
 
 
+def investment_strategy_figure(daily):
+    """Show the saved, fee-inclusive wealth paths without refitting a strategy."""
+    fig = go.Figure()
+    specs = [
+        ('Static_60_40','60% SPY / 40% BIL',TEAL,3.3,'solid'),
+        ('SPY_hold','SPY buy-and-hold',NAVY,2.1,'solid'),
+        ('Macro_trend_80_20','Macro + trend rule',RED,2.1,'solid'),
+        ('BIL_hold','BIL buy-and-hold',SLATE,1.9,'dot'),
+    ]
+    for model,label,color,width,dash in specs:
+        selected = daily.loc[daily.model.eq(model)].sort_values('date')
+        if selected.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=selected.date,y=100*selected.wealth,name=label,
+            line={'color':color,'width':width,'dash':dash},
+            customdata=selected[['equity_weight']].to_numpy(),
+            hovertemplate=label+'<br>Net wealth: $%{y:.2f}<br>SPY weight: %{customdata[0]:.1%}<extra></extra>'))
+    fig.add_hline(y=100,line_color='#A8B8C2',line_width=.8,line_dash='dot')
+    style(fig,'Investment wealth after modeled costs',480,'Net wealth · initial $100')
+    fig.update_yaxes(tickprefix='$',tickformat=',.0f',rangemode='tozero')
+    fig.update_layout(meta={'chart_key':'investment_strategy'},
+                      legend={'y':-.19},margin={'b':112})
+    return date_axes(fig)
+
+
 def build():
     forecasts = frame(OUT / 'forecasts.csv')
     metrics = frame(OUT / 'model_metrics.csv')
@@ -161,6 +187,8 @@ def build():
         providers=providers.loc[providers.comparison_status.eq('main_common_event_panel')]
     provider_summary = read_json(OUT / 'provider_bias_summary.json')
     ai = read_json(ROOT / 'outputs' / 'ai_diagnostic_validation_metrics.json')
+    investment_daily = frame(OUT / 'investment_full_daily.csv')
+    investment_summary = read_json(OUT / 'investment_summary.json')
     figures = []
     if not forecasts.empty:
         primary = forecasts[(forecasts['target'] == 'sentiment') &
@@ -277,6 +305,8 @@ def build():
         fig.update_yaxes(ticksuffix='%')
         fig.update_layout(margin={'b':56})
         figures.append(date_axes(fig))
+    if not investment_daily.empty:
+        figures.append(investment_strategy_figure(investment_daily))
     embedded = []
     for i, fig in enumerate(figures):
         embedded.append(pio.to_html(fig, full_html=False, include_plotlyjs=True if i == 0 else False,
@@ -337,7 +367,7 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
 <div class="stat"><div class="stat-label">Economic-model prediction</div><div class="stat-value teal">{recent.prediction:.1f}</div><div class="stat-note">M1 · information available at the month’s forecast origin</div></div>
 <div class="stat"><div class="stat-label">Model-specific sentiment gap</div><div class="stat-value coral">{recent.gap:+.1f}</div><div class="stat-note">Index points · observed minus M1 prediction</div></div></div>'''
     html += '''<div class="card notice"><strong>Interpretation and data status</strong><p>A negative sentiment gap is unexplained under the specified model. It does not establish irrational consumers or a media effect. Media variables measure sampled content supply; exposure and cognitive bias are unobserved. The 2026 monitoring period is a snapshot, and partial October data must not be compared with complete months without qualification.</p><p>Factual accuracy has not been established for the corpus: numerical-claim screening is verification eligibility, never an accuracy score. Independent AI annotation is a development diagnostic; the required two-human validation is incomplete. Q3 GDP from the supplied workbook is quarantined until its official release.</p></div>'''
-    sections=['Sentiment','The gap','Providers','Media wording','Frames & salience','Sample coverage','Calibration','Economic inputs']
+    sections=['Sentiment','The gap','Providers','Media wording','Frames & salience','Sample coverage','Calibration','Economic inputs','Investing']
     notes=[
         'Historical survey targets are latest-final observations, not historical target vintages. The interval uses earlier forecast errors and is not guaranteed to achieve 95% coverage. October diamonds are preliminary; they are excluded from completed-final assessment.',
         'A negative bar is unexplained pessimism under this economic specification. It is a model residual, not a percentage of biased consumers or a causal media effect.',
@@ -346,12 +376,24 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
         'Choose Framing, Issue salience or Attribution using the view selector. Muted legend entries retain additional dimensions. Shares describe sampled titles; the price-level minus rate contrast is a difference in shares. Literal proxies are unvalidated, and an actor mention is not credit or blame.',
         'Title counts use the left axis; outlet and source-group counts use the right. The coral title bar marks incomplete October. Availability in this captured sample does not establish what survey respondents encountered.',
         'Numerical-claim screening indicates eligibility for review, never factual accuracy. Alignment counts concern a purposive subset and do not identify a corpus-wide error rate.',
-        'Each value is the latest released information in that forecast origin’s macro vintage. GDP remains quarterly, without interpolation. Reference-period age is measured from the period’s start, separately from publication timing.'
+        'Each value is the latest released information in that forecast origin’s macro vintage. GDP remains quarterly, without interpolation. Reference-period age is measured from the period’s start, separately from publication timing.',
+        'January 2, 2015–October 2, 2026. Wealth starts from $100 before fees; all paths include 10 basis points per dollar bought or sold, including entry and final liquidation. The fixed mix rebalances monthly and is preferred retrospectively over the tested timing rule. Primary rule: 80% SPY when prior-month price exceeds its 10-month average and as-of labor deterioration is below 0.50 percentage point; otherwise 20%, with the remainder in BIL. Positive historical profit is not future alpha. Gap/media overlays use a different 44-origin sample and are omitted from this full-period chart.'
     ]
     html += '<nav class="jump-nav" aria-label="Monitor sections"><span class="nav-label">Explore the evidence</span>'
     html += ''.join(f'<a href="#panel-{i}">{escape(label)}</a>' for i,label in enumerate(sections[:len(embedded)]))+'</nav>'
     for i,chart in enumerate(embedded):
         html += f'<section class="card chart-card" id="panel-{i}" aria-label="{escape(sections[i])}"><div class="card-header"><span class="section-label">{i+1:02d} / {escape(sections[i])}</span><span class="interaction-hint">Drag to zoom · double-click to reset</span></div>{chart}<p class="chart-note">{escape(notes[i])}</p></section>'
+    if not investment_daily.empty:
+        html += '<div class="card scroll"><h2>Investment conclusion: a simpler reference allocation</h2><p>The monthly-rebalanced 60% SPY / 40% BIL mix is the preferred research reference after comparing these results. SPY buy-and-hold earned more with greater equity exposure and a deeper drawdown. This is a retrospective preference, not an optimal allocation or a promise of future profit. BIL holds short Treasury bills, rather than a broad bond portfolio.</p>'
+        rows=[]
+        for result in investment_summary.get('full_metrics',[]):
+            rows.append({'Portfolio':result['label'],
+                         'Final wealth per $100':f"${100*(1+result['net_total_return']):,.2f}",
+                         'Net CAGR':f"{100*result['net_cagr']:.2f}%",
+                         'Maximum drawdown':f"{100*result['max_drawdown']:.2f}%"})
+        if rows:
+            html += table_html(pd.DataFrame(rows),10)
+        html += '<p>The primary rule uses actual as-of unemployment vintages and prior completed-month prices. Its custom labor guard compares three-month unemployment means and is not the published Sahm indicator. Execution is at the first joint ETF close strictly after each monthly origin. Adjusted prices are a retrospective distribution/split-adjusted total-return proxy; synthetic fractional units and reinvestment are assumed. Taxes and nonlinear market impact are omitted.</p><p>Overlay diagnostics are pseudo-real-time: the gap uses revised survey targets, and media uses reconstructed historical titles and a later representation. All 44 gap signals are negative, so that overlay adds ten percentage points of target equity throughout; the media overlay almost always reduces equity. Their raw return differences do not establish useful timing or portable alpha. The provider comparison never selects trades. No financial trades were placed.</p></div>'
     if not providers.empty:
         html += '<div class="card scroll"><h2>How to read the provider comparison</h2><p>This separate supplement was retrieved October 15, 2026, after the October 13 economic cutoff, and covers January–September releases. A coverage-only amendment selected the displayed panel after the initial mandatory core failed the six-event support threshold; no sentiment score selected its providers.</p><p>Providers are compared on an identical set of official economic releases. Within each release, the negative-headline share for each provider is compared with the equal-weight average of the other providers; release differences are then averaged. Positive bars mean more negative wording in this sample. Zero means the peer reference, not factual neutrality. Error bars are conditional month-resampling stability ranges, not guaranteed population confidence intervals; selected feeds and few fixed months limit generalization.</p><p>Different true components of a release can justify different headlines. This proxy combines framing and emphasis; it does not establish factual error, partisan slant, audience exposure or an effect on consumer sentiment. Retrieval and classifier error are outside the plotted ranges. The supplement never changes the frozen historical media forecast.</p>'
         html += table_html(providers[['provider','bias_pp','lower_95','upper_95','n_titles','n_events']],20)+'</div>'
@@ -383,7 +425,7 @@ details{margin-top:17px}summary{cursor:pointer;color:var(--teal);font-size:12px;
     html += '</div>'
     html += '<div class="card scroll"><h2>Relevant releases and prospective events</h2>' + table_html(events,30) + '</div>'
     html += '<div class="card"><h2>Latest official observation status</h2><details><summary>Show release and vintage details</summary><pre>' + latest_text + '</pre></details></div>'
-    html += '<div class="card"><h2>Update procedure</h2><p>From the project folder, run the collection and scoring commands in README, rerun <code>python scripts/03_analyze.py</code>, and rebuild with <code>python scripts/04_build_deliverables.py</code>. Preserve old raw vintages, record the new cutoff, rerun validation, and rebuild the report, notebook and presentation. Changes to methods or codebook require a new version and sensitivity analysis.</p><p>Only official values published by each origin enter the economic forecast. Missing source-months remain missing. A newly acquired media sample can differ because rankings and wording change. No causal national-index estimate is displayed.</p></div><footer class="page-footer"><span>Panagiotis Housos · ph2606 · AI Applications in Finance</span><span>Local research artifact · October 13 economic snapshot</span></footer></main></body></html>'
+    html += '<div class="card"><h2>Update procedure</h2><p>From the project folder, run the collection and scoring commands in README, rerun <code>python scripts/03_analyze.py</code>, then <code>python -m src.investing all</code>, and rebuild with <code>python scripts/04_build_deliverables.py</code>. Preserve old raw vintages, record the new cutoff, rerun validation, and rebuild the report, notebook and presentation. Changes to methods or codebook require a new version and sensitivity analysis.</p><p>Only official values published by each origin enter the economic forecast. Missing source-months remain missing. A newly acquired media sample can differ because rankings and wording change. No causal national-index estimate is displayed.</p></div><footer class="page-footer"><span>Panagiotis Housos · ph2606 · AI Applications in Finance</span><span>Local research artifact · October 13 economic snapshot</span></footer></main></body></html>'
     path = ROOT / 'dashboard.html'
     path.write_text(html, encoding='utf-8')
     print(f'Built {path.name} with {len(figures)} interactive figures.')

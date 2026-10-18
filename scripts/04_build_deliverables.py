@@ -130,7 +130,10 @@ def build_report(content):
                 markdown.append('')
             elif item['type'] == 'figure':
                 figure_number += 1
-                tex += [r'\begin{center}\includegraphics[width=' + item.get('width', '.97') + r'\linewidth]{outputs/' + item['name'] + r'.pdf}\end{center}',
+                options = 'width=' + item.get('width', '.97') + r'\linewidth'
+                if item.get('height'):
+                    options += ',height=' + item['height'] + ',keepaspectratio'
+                tex += [r'\begin{center}\includegraphics[' + options + ']{outputs/' + item['name'] + r'.pdf}\end{center}',
                         r'\noindent\begingroup\setlength{\fboxsep}{5pt}\colorbox{mist}{\parbox{\dimexpr\linewidth-10pt\relax}{'
                         + r'\sffamily\fontsize{8.5}{10.8}\selectfont\color{navy}\textbf{FIGURE '
                         + f'{figure_number:02d}' + r'}\quad ' + prose(item['caption']) + r'}}\endgroup\par\smallskip']
@@ -141,13 +144,13 @@ def build_report(content):
 
 def build_notebook(content):
     input_paths = ['data/processed/monthly_dataset.csv','data/processed/media_monthly.csv',
-                   'outputs/tables/provider_bias.csv']
+                   'outputs/tables/provider_bias.csv','data/processed/investment_prices.csv']
     expected_inputs = {name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
                        for name in input_paths if (ROOT/name).exists()}
     cells = [nbf.v4.new_markdown_cell('# Economic narratives and consumer sentiment\n\n**Panagiotis Housos | ph2606 | AI Applications in Finance | Final Project**\n\nInformation cutoff: October 13, 2026. Human validation is not completed; independent AI reviews are explicitly separate. Acquisition and model scoring run separately. The cells below rerun analysis from local frozen inputs. Raw datasets are excluded from Git under the established submission policy.'),
              nbf.v4.new_code_cell("from pathlib import Path\nimport json\nimport hashlib\nimport pandas as pd\nfrom IPython.display import display, Image\nROOT = Path.cwd()\nassert (ROOT / 'src/economics.py').exists(), 'Execute from the project root.'\nexpected_inputs = " + repr(expected_inputs) + "\nfor name, expected in expected_inputs.items():\n    path = ROOT / name\n    assert path.exists(), f'Acquire required input: {name}'\n    assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, f'Input changed: {name}. Rerun analysis and rebuild deliverables before executing this notebook.'\npd.set_option('display.max_columns', 14)\npd.set_option('display.max_colwidth', 70)\npd.set_option('display.precision', 4)"),
              nbf.v4.new_markdown_cell('## Recompute the frozen empirical analysis\n\nThe economic feature matrix uses historical ALFRED snapshots. Media reconstruction is retrospective and subject to source selection and original-wording limitations. The package never invents missing records, exposure or human labels.'),
-             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary analysis and exploratory dynamics recalculated from acquired observations.')")]
+             nbf.v4.new_code_cell("import subprocess, sys\nfor command in [['scripts/03_analyze.py'], ['-m', 'src.dynamics'], ['-m', 'src.investing', 'analyze']]:\n    result = subprocess.run([sys.executable, *command], cwd=ROOT, capture_output=True, text=True)\n    print(result.stdout)\n    assert result.returncode == 0, result.stderr\nprint('Primary analysis and exploratory dynamics recalculated from acquired observations.')")]
     cells += [nbf.v4.new_markdown_cell('## Persistence and differenced-model sensitivity\n\nThese checks were added after the primary analysis and are exploratory. ADF and KPSS have different null hypotheses; structural breaks limit either interpretation. The differenced models use the same 44 test months and a separately identified two-contrast loss-test family.'),
               nbf.v4.new_code_cell("display(pd.read_csv(ROOT / 'outputs/tables/dynamics_unit_root.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_differenced_metrics.csv'))\ndisplay(pd.read_csv(ROOT / 'outputs/tables/dynamics_loss_hac.csv'))")]
     cells += [nbf.v4.new_markdown_cell('## Independent AI diagnostic: class and source concordance\n\nThese are AI development references, not human ground truth. The original pool has 300 items; final-corpus eligibility and mixed/uncertain exclusions are explicit. Small source/class cells have unstable estimates. Required human validation remains pending.'),
@@ -157,6 +160,8 @@ def build_notebook(content):
     if (ROOT/'outputs/tables/provider_bias.csv').exists():
         cells += [nbf.v4.new_markdown_cell('## News-provider comparison: matched official releases\n\nA separate supplemental sample includes CNBC and Fox brands. The provider bars use a common set of releases and a defined peer reference. This is a relative negative-framing proxy, not a factual or ideological rating. The original forecast corpus and 300-title AI review remain separate; the new providers do not have independent human validation.'),
                   nbf.v4.new_code_cell("provider_table = pd.read_csv(ROOT / 'outputs/tables/provider_bias.csv')\ndisplay(provider_table)\nprovider_summary = json.loads((ROOT / 'outputs/tables/provider_bias_summary.json').read_text())\ndisplay(pd.Series(provider_summary, name='provider_comparison_protocol'))")]
+    cells += [nbf.v4.new_markdown_cell('## Retrospective investment extension (October 17)\n\nThe primary macro/trend rule was fixed before performance calculation; the simpler monthly 60% SPY / 40% BIL benchmark is preferred after the comparison. Neither is an untouched holdout. Costs include entry, exit and both traded legs. Gap and media overlays use retrospective inputs. All 44 gaps are negative; this is exposure, not demonstrated timing.'),
+              nbf.v4.new_code_cell("investment = json.loads((ROOT / 'outputs/tables/investment_summary.json').read_text())\nperformance = pd.read_csv(ROOT / 'outputs/tables/investment_metrics.csv')\ndisplay(performance.loc[performance.cost_bps.eq(10)])\nprint('Full-period cost sensitivity:')\ndisplay(performance.loc[performance['sample'].eq('full'), ['model','cost_bps','net_cagr','max_drawdown','annual_gross_turnover']])\nprint('Primary HAC diagnostics:')\ndisplay(pd.DataFrame(investment['hac_tests']).T)\nprint('Original two-test overlay family (unadjusted for exposure):')\ndisplay(pd.DataFrame(investment['overlay_tests']))\nprint('Post-result exposure diagnosis:')\nprint(json.dumps(investment['exposure_diagnostics'], indent=2))\nprint(investment['practical_conclusion'])")]
     for page_index,(title, items) in enumerate(content):
         cells.append(nbf.v4.new_markdown_cell('## ' + title))
         for item_index,item in enumerate(items):
@@ -251,4 +256,6 @@ if __name__ == '__main__':
     if (ROOT/'outputs/provider_bias.png').exists():
         shutil.copyfile(ROOT/'outputs/provider_bias.png',ROOT/'Provider_Bias_Comparison.png')
         shutil.copyfile(ROOT/'outputs/provider_bias.pdf',ROOT/'Provider_Bias_Comparison.pdf')
+    shutil.copyfile(ROOT/'outputs/investment_strategy.png',ROOT/'Investment_Strategy_Comparison.png')
+    shutil.copyfile(ROOT/'outputs/investment_strategy.pdf',ROOT/'Investment_Strategy_Comparison.pdf')
     print('Built 12-page report source, notebook, dashboard, and presentation.')

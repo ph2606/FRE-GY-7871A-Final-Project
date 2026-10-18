@@ -4,13 +4,15 @@ Information cutoff: **October 13, 2026**, America/New_York. Election day is outs
 Raw/derived datasets, detailed annotations and model weights remain local and are excluded from Git.
 A fresh download reproduces the method, but mutable search feeds, original wording, deletions and revisions can change results.
 
-- Local file inventory: 4,294 files, 764,567,161 bytes.
-- Canonical inventory SHA-256: `df5c970f693846b61e28cf3b3681523630a5ea2df9fe93e0240c4e4582472157`.
+- Local file inventory: 4,325 files, 779,502,216 bytes.
+- Canonical inventory SHA-256: `c10f6dc76d997aa5c7be044a902690064378ffc772726e7db33c1a3717929714`.
 - Full itemized inventory is local at `outputs/snapshot_manifest.json`.
 - Media: 3,787 titles, 82 months, 81 complete.
 - Common media assessment: 44 months.
 - Human-specific annotation requirement: **not satisfied**; AI diagnostics are separately identified.
 - Provider supplement: 6 providers and 6 identical releases; collected retrospectively for the October 15 revision.
+- Investing extension: developed retrospectively October 17; 141 monthly allocations, January 2, 2015–October 2, 2026; 10 bp per dollar traded including entry and liquidation.
+- The 60% SPY / 40% BIL benchmark is preferred after the comparison; positive historical profit is not demonstrated media alpha or a promise of future profit.
 
 | Artifact / key input | SHA-256 |
 | --- | --- |
@@ -25,11 +27,18 @@ A fresh download reproduces the method, but mutable search feeds, original wordi
 | `outputs/tables/provider_bias.csv` | `06e999b8b87368f37891f4a25c347bf63ccd3e00278a513dfcc68cb3d3efeeb9` |
 | `outputs/tables/provider_bias_summary.json` | `b0131239a41d3bb7e48a14c520fa0ad4fc84f6dba74135f20caa54383d28b28c` |
 | `Provider_Bias_Comparison.png` | `97e92f7e8e98c7dacf236e32e9de504765ec5849900e1a39be80b2433dba6966` |
-| `Provider_Bias_Comparison.pdf` | `970b52600f5e8a52a04d1092ef6b820ecdca081b63cdffd08de843d170f3b41c` |
-| `Panagiotis_Housos_Final_Project.pdf` | `ece2f6b3ab51189baeaccd0e7ef9b226a262559206d7efdc8f2bfab6e4ccb678` |
-| `Panagiotis_Housos_Final_Project.pptx` | `25c807b1e97c18beae6137d587f6c7804df971f34fa2971e5ec52e6545ec1f9b` |
-| `final_project.ipynb` | `1032f8851639fc59deb4ad32dded4574fe1e92a594f38d52c2c3f22b5bf3e18e` |
-| `dashboard.html` | `0522537002f0e2ce9f6c3400e5b5b9f3c58d60636b8fbddd7844b9db340359ff` |
+| `Provider_Bias_Comparison.pdf` | `c074371e9a6edb9301dc27048159edef44d64291298b754e05f008af7b6bdb8f` |
+| `data/processed/investment_prices.csv` | `2c86cd2c3bcd7441b5ccf29247a90c8832d30aff8477fd622001441cfddf1401` |
+| `data/processed/investment_signals.csv` | `5eee91b475585e7e81664d963a7e1c9a7c13577dbf982f9fa53ef91f2a30bd44` |
+| `outputs/tables/investment_metrics.csv` | `3a6873d9fed27d34904ec60db97bbe1be174c12b4127c28a4baa47d0908d0fc5` |
+| `outputs/tables/investment_summary.json` | `05ba65a02fa9cc28577227035fe2d31557947b96abe70c3e31ca2754092198f6` |
+| `docs/INVESTMENT_PROTOCOL.md` | `89be9b2e1dc2333bf772243355bab5a647cdba909ed7f4d99756327781ea9315` |
+| `Investment_Strategy_Comparison.png` | `cca9f032764344d7dc2356752e3ae5d49e32d98ac0e4eea1400741d856b0fb5a` |
+| `Investment_Strategy_Comparison.pdf` | `500633c466d2c37d2b50440568b080f00fa135b5be664d41793534da0106ebb3` |
+| `Panagiotis_Housos_Final_Project.pdf` | `029fa4851a45d42559e60ffd362a6245a7a5384fb3c7358035763ae20fcaee2c` |
+| `Panagiotis_Housos_Final_Project.pptx` | `f7af2b8ac8cf196e701967bf239548ec928777577a38feb2f93402861c141cc1` |
+| `final_project.ipynb` | `6181e119022da6bb70f73fc33e38590eeb85b3568ec72eae17dbf59a81ba92d9` |
+| `dashboard.html` | `daea817203d2490638da74574c9ddc37d127a441bc54e48aec4785ba474fd037` |
 
 Observed interpreter: Python 3.12.5 on Windows; exact package closure in requirements-lock.txt.
 The latest Michigan historical targets are not historical survey vintages. Macro predictors use actual ALFRED snapshots; media tests remain retrospective pseudo-out-of-sample.

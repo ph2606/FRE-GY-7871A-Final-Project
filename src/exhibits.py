@@ -241,7 +241,35 @@ def build():
         if 'comparison_status' in data:
             data=data.loc[data.comparison_status.eq('main_common_event_panel')]
         provider_bias_figure(data)
+    investment_path = TABLES / 'investment_full_daily.csv'
+    if investment_path.exists():
+        investment_figure(pd.read_csv(investment_path,parse_dates=['date']))
     print('Publication figures rebuilt.')
+
+
+def investment_figure(data):
+    """Four fixed, costed paths; do not imply the preferred benchmark was primary."""
+    _theme()
+    fig = _figure('A simpler allocation outperformed the timing rule',
+                  'Growth of $100 | Jan 2, 2015 to Oct 2, 2026 | 10 bp per dollar traded, including entry and exit',
+                  size=(10.2, 3.6))
+    ax = _axis(fig.add_axes([.075,.19,.77,.54]))
+    styles=[('SPY_hold','SPY',NAVY,1.65,'-'),
+            ('Static_60_40','60% SPY / 40% BIL',TEAL,2.55,'-'),
+            ('Macro_trend_80_20','Macro + trend rule',RED,1.8,(0,(4,2))),
+            ('BIL_hold','BIL',SLATE,1.3,(0,(2,2)))]
+    for model,label,color,width,dash in styles:
+        series=data.loc[data.model.eq(model)].sort_values('date')
+        ax.plot(series.date,100*series.wealth,color=color,lw=width,ls=dash,label=label)
+        last=series.iloc[-1]
+        _endpoint(ax,last.date,100*last.wealth,f'${100*last.wealth:.0f}',color,fontsize=10.5)
+    _legend(ax,columns=4)
+    _date_axis(ax,data.date,padding_months=12)
+    ax.set_ylim(80,500)
+    ax.set_ylabel('Net portfolio value ($)',labelpad=12)
+    fig.text(.075,.045,'Retrospective benchmark preference; adjusted-price proxy. Equity exposure explains gains; future profit is uncertain.',
+             fontsize=9.7,color=SLATE)
+    save(fig,'investment_strategy')
 
 
 def provider_bias_figure(data):

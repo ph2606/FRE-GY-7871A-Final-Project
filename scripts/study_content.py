@@ -29,8 +29,10 @@ def table(headers, rows, widths=None):
     result = {'type': 'table', 'headers': headers, 'rows': rows}
     if widths: result['widths'] = widths
     return result
-def figure(name, caption, width='.96'):
-    return {'type': 'figure', 'name': name, 'caption': caption, 'width': width}
+def figure(name, caption, width='.96', height=None):
+    result = {'type': 'figure', 'name': name, 'caption': caption, 'width': width}
+    if height is not None: result['height'] = height
+    return result
 
 
 def evidence():
@@ -63,6 +65,20 @@ def comparison_rows(e):
              'M1_controls':'Economics + household controls','Persistence':'Last observed sentiment'}
     return [[names.get(r.model,r.model),int(r.n),fmt(r.rmse),fmt(r.mae),fmt(100*r.coverage_95,1)+'%' if pd.notna(r.coverage_95) else '—']
             for r in e['comparison'].itertuples()]
+
+
+def investment_evidence():
+    summary = load(T / 'investment_summary.json')
+    rows = {row['model']: row for row in summary['full_metrics']}
+    return summary, rows
+
+
+def investment_rows(rows):
+    names = [('Static_60_40', 'Monthly 60% SPY / 40% BIL'),
+             ('Macro_trend_80_20', 'Macro + trend allocation'),
+             ('SPY_hold', 'SPY buy-and-hold'), ('BIL_hold', 'BIL buy-and-hold')]
+    return [[label, fmt(100*rows[model]['net_cagr'])+'%',
+             fmt(100*rows[model]['max_drawdown'])+'%'] for model, label in names]
 
 
 def verdict(e):
@@ -187,6 +203,8 @@ def sections():
     comp = e['comparison']
     comp_dates = f"{str(comp.start.min())[:10]} to {str(comp.end.max())[:10]}" if len(comp) else 'unavailable'
     audit = load(T / 'workbook_audit.json')
+    investment, portfolios = investment_evidence()
+    adaptive, fixed, spy = [portfolios[model] for model in ['Macro_trend_80_20','Static_60_40','SPY_hold']]
     pages = []
     pages.append(('Question, evidence and practical result', [
         p('This project asks whether economic narratives help explain the divergence between the University of Michigan Index of Consumer Sentiment and headline economic conditions before the November 3, 2026 midterm elections. It separates household pressures, selective information or framing, and measurement or model inadequacy. Negative coverage and pessimistic consumers are not presumed biased.'),
@@ -198,7 +216,7 @@ def sections():
             ['Monitoring','October preliminary sentiment 46.3; incomplete October media; cutoff October 13, 2026'],
             ['Validation status','AI and dictionary diagnostics; two independent HUMAN annotators are not available'],
             ['Identification','Observational analysis and a detailed prospective causal-design proposal']], [.25,.75]),
-        p('The practical implication is a forecasting and risk-monitoring process: use household controls, lagged sentiment and source-quality flags before treating a narrative index as actionable information. This study does not justify a media-driven trading position or a causal attribution of the national sentiment decline. All empirical observations were acquired; missing human work is disclosed rather than fabricated.')]))
+        p(f"The separate October 17, 2026 investment extension favors a simple benchmark within this historical sample: monthly 60% SPY / 40% BIL earned {fmt(100*fixed['net_cagr'])}% net CAGR, versus {fmt(100*adaptive['net_cagr'])}% for the fixed macro/trend rule, through October 2, 2026. Both were historically profitable after modeled costs; neither establishes alpha or prospective profitability. The investment conclusion and risk comparison are on page 12.")]))
     pages.append(('1. Input audit and source provenance', [
         p('The two supplied files were read before analysis. The spreadsheet has four separate date/value pairs rather than one aligned panel: U-3 unemployment, Michigan headline sentiment, a column labeled PCE YoY, and quarterly GDP growth. Values must be joined by their own observation periods. Month-end labels describe the month; they do not establish the day information became available. The sheet provides no original source URLs, retrieval clocks, publication dates or revision vintages.'),
         table(['Input issue','Official check and treatment'],[
@@ -286,8 +304,8 @@ def sections():
         p('The supplement was retrieved October 15, 2026, after the October 13 economic cutoff. A coverage-only feasibility amendment selected six providers with six shared releases after the initial mandatory core supported only four. The y-axis measures relative negative framing; the x-axis identifies providers. Identical search rules, source-blind classification and equal event weights apply. CNBC, Fox News and Fox Business remain separate publications. The original monthly forecast corpus and results are unchanged.'),
         p('A positive bar is not proof of distortion. Providers can truthfully emphasize different components, such as unemployment versus wages. Zero is not objective neutrality. Some signs change under dictionary or single-title sensitivities; the ranking is unstable. The new providers lack human validation, and the original AI review contains no CNBC or Fox items. Feed selection, few clusters and classification error limit interpretation. The chart does not measure ideological slant, factual dishonesty, exposure or a causal sentiment effect.'),
         p('The interactive dashboard also displays sentiment, the economic prediction and intervals, the gap, media dimensions, source composition and performance. Preserve the October 13 economic snapshot when updating; October 23 Michigan final and October 29 GDP/PCE releases remain prospective. Election proximity is context, not an identified treatment.'),
-        p('Use provider differences to target matched-story review and forecast-risk scenarios. Require factual calibration, independent human validation and prospective forecast gains before changing investment exposure. The project does not estimate a profitable trading strategy.')]))
-    pages.append(('11. Answers, limits and principal references', [
+        p('Use provider differences to target matched-story review and forecast-risk scenarios. The separate investment backtest on page 12 compares macro/trend allocation with simple SPY/BIL portfolios; provider bars never select securities or trades.')]))
+    pages.append(('11. Answers and investment conclusion', [
         table(['Required research question','Answer supported by this project'],[
             ['How measure coverage bias?','Define an event/accuracy benchmark; measure tone, selection, framing, calibration and attribution separately. Current proxies measure content, not a validated global bias score.'],
             ['Impact on Michigan sentiment?','Estimate lagged predictive associations with uncertainty; causal depression of the national index is not identified.'],
@@ -295,10 +313,14 @@ def sections():
             ['Which perceptual mechanisms measurable?','Price-level and household framing are content proxies; individual anchoring, availability, confirmation and negativity bias remain unobserved.'],
             ['Does media improve predictions?','Use the common-sample M1/M2/M3 and autoregressive comparisons on page 9; improvement is conditional on this retrospective sample.'],
             ['What would contradict media bias?','Successful household controls, unstable or null incremental prediction, calibrated coverage, and null properly powered framing effects.']], [.31,.69]),
-        p('Material limitations: no two-human validation, no verified corpus-wide factual calibration, no respondent exposure, no historical consensus surprises, selected and capped title sources, retrospective wording/model availability, and aggregate controls. These prevent a claim that media bias explains the national sentiment gap. A rigorous provisional or null finding is preferable to an invented effect.'),
-        p('Principal primary sources: [Michigan index and October preliminary](https://www.sca.isr.umich.edu/); [Michigan release calendar](https://data.sca.isr.umich.edu/fetchdoc.php?docid=79628); [Michigan web transition](https://www.sca.isr.umich.edu/files/methodtransitionannouncement2024.pdf); [Michigan revised 2026 methodology report](https://www.sca.isr.umich.edu/files/partisaneconomy202607_revised.pdf); [BLS CPS](https://www.bls.gov/cps/); [BLS shutdown impact](https://www.bls.gov/cps/methods/2025-federal-government-shutdown-impact-cps.htm); [BEA August PCE](https://www.bea.gov/news/2026/personal-income-and-outlays-august-2026); [BEA GDP](https://www.bea.gov/data/gdp/gross-domestic-product); [ALFRED](https://alfred.stlouisfed.org/); [CardiffNLP](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest); [VADER](https://github.com/cjhutto/vaderSentiment); [HN API](https://hn.algolia.com/api). Precise sources and methodological notes are in docs/sources.md.'),
-        p('The provider comparison follows the distinction between selection and presentation in [Budak, Goel and Rao (2016)](https://5harad.com/papers/mediabias.pdf). Its generic negative-wording proxy is different from the politically anchored slant index of [Gentzkow and Shapiro (2010)](https://web.stanford.edu/~gentzkow/research/biasmeas.pdf). These references motivate the construct boundary; they do not validate this classifier or custom metric.'),
-        p('Reproducibility: acquisition/scoring commands, environment lock, payload hashes, source/cutoff manifests, codebook, annotation guide, executed notebook and dashboard generator accompany the project. AI_USE.md discloses substantial AI assistance. No human subjects, trades or institutional submission were performed.')]))
+        figure('investment_strategy',
+               f"October 17 retrospective extension: January 2, 2015–October 2, 2026 returns. Yahoo adjusted prices approximate reinvested distributions. Costs: {investment['cost_bps_per_dollar_traded']} bps per dollar bought or sold in either ETF, including entry and final liquidation. No return-based threshold search.",
+               height='145pt'),
+        table(['Portfolio: same dates and costs','Net CAGR','Worst drawdown'],
+              investment_rows(portfolios), [.60,.20,.20]),
+        p('The historical comparison favors monthly 60% SPY / 40% BIL. The custom trend/Sahm-style rule holds 80% SPY when prior-month price exceeds its ten-month mean and the as-of three-month unemployment mean is less than 0.50 points above its trailing twelve-month low; otherwise 20%, with BIL the remainder. Incomplete labor windows are defensive. Both rules rebalance at the first joint-session close strictly after each monthly origin. Timing added little drawdown protection over 60/40.'),
+        p('Limits: no two-human media validation, corpus-wide factual audit or respondent exposure. Backtests use retrospective adjusted prices and assumed costs, omit taxes and nonlinear impact, and lack untouched validation. Gap/media tilts use revised or reconstructed inputs; all 44 gap signals add equity exposure. Historical net profit establishes neither alpha nor future profit. Details: docs/INVESTMENT_PROTOCOL.md.'),
+        p('Primary sources: [Michigan index](https://www.sca.isr.umich.edu/), [calendar](https://data.sca.isr.umich.edu/fetchdoc.php?docid=79628), [web transition](https://www.sca.isr.umich.edu/files/methodtransitionannouncement2024.pdf), [2026 methodology](https://www.sca.isr.umich.edu/files/partisaneconomy202607_revised.pdf); [BLS CPS](https://www.bls.gov/cps/) and [shutdown](https://www.bls.gov/cps/methods/2025-federal-government-shutdown-impact-cps.htm); [BEA PCE](https://www.bea.gov/news/2026/personal-income-and-outlays-august-2026), [GDP](https://www.bea.gov/data/gdp/gross-domestic-product); [ALFRED](https://alfred.stlouisfed.org/); [CardiffNLP](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest); [VADER](https://github.com/cjhutto/vaderSentiment); [HN](https://hn.algolia.com/api); [SPY](https://www.ssga.com/us/en/individual/etfs/state-street-spdr-sp-500-etf-trust-spy) and [BIL](https://www.ssga.com/us/en/individual/etfs/state-street-spdr-bloomberg-1-3-month-t-bill-etf-bil). [Budak et al. (2016)](https://5harad.com/papers/mediabias.pdf) and [Gentzkow–Shapiro (2010)](https://web.stanford.edu/~gentzkow/research/biasmeas.pdf) define distinct framing/slant constructs, without validating this proxy. Sources, code, provenance, codebook, notebook and AI_USE.md accompany the project; no participants, trades or institutional submission.')]))
     return pages
 
 
@@ -306,6 +328,8 @@ def slides():
     e = evidence()
     latest = e['primary'].iloc[-1]
     providers = provider_evidence()
+    investment, portfolios = investment_evidence()
+    adaptive, fixed, spy = [portfolios[model] for model in ['Macro_trend_80_20','Static_60_40','SPY_hold']]
     deck = [
         {'title':'Economic narratives & consumer sentiment',
          'points':['Ahead of the November 2026 midterms','What explains the gap: household pressure, framing, or measurement?','Panagiotis Housos · ph2606'],
@@ -335,9 +359,16 @@ def slides():
         {'title':'Causal impact requires stronger identification',
          'points':['Reverse causality and common shocks remain','Propose random assignment of truthful frames','Measure beliefs, recall and household perceptions','A sample effect is not the national-index effect'],
          'notes':'The chosen causal route is observational analysis with a stronger-design proposal. Pessimistic consumers may seek negative content, publishers may respond to demand, and economic shocks can drive both coverage and sentiment. A feasible experiment would randomly assign equally accurate price-level or inflation-rate framings of the same official information. It would measure baseline beliefs, subsequent perceptions and recall, with pre-registered contrasts and appropriate approval. Even a well-identified effect in that sample would not establish an effect on the national Michigan index. That would also require population exposure estimates, representative weighting and defensible transportability assumptions.'},
-        {'title':'Practical implication: monitor, validate, then act',
-         'points':['Use the gap to diagnose forecast failure','Check household controls and source composition','Update from official releases and preserve vintages','Require prospective validation before investment use'],
-         'notes':'The useful deliverable is an updateable monitoring process. The dashboard shows the economic forecast, uncertainty, the gap, provisional narrative measures, source coverage and upcoming releases. A team can use it to ask whether the model is missing household pressure or whether a narrative change merits closer research. It should preserve snapshots and check prospective performance before changing investment exposure. The study does not estimate a profitable trading strategy or a causal national media effect. Its main conclusion is that timing, definitions, validation and alternative explanations have to be resolved before an apparent sentiment discrepancy becomes a financial signal.'}
+        {'title':'Investment conclusion: prefer the simple mix',
+         'layout':'wide_chart',
+         'subtitle':'Monthly 60% SPY / 40% BIL · January 2015–October 2, 2026 · retrospective after-cost comparison',
+         'caption':f"Net CAGR: fixed 60/40 {fmt(100*fixed['net_cagr'])}% · macro/trend {fmt(100*adaptive['net_cagr'])}% · SPY {fmt(100*spy['net_cagr'])}%. Positive history is not alpha or future profit.",
+         'points':['Rebalance 60% SPY / 40% BIL monthly',
+                   f"Fixed mix: {fmt(100*fixed['net_cagr'])}% CAGR; {fmt(100*fixed['max_drawdown'])}% drawdown",
+                   f"Costs: {investment['cost_bps_per_dollar_traded']} bps per dollar traded, entry/exit included",
+                   'Test prospectively; provider bars never trade'],
+         'image':'investment_strategy',
+         'notes':f"The investment extension compares fixed rules, without searching thresholds for profit. The macro/trend rule holds eighty percent equities when trend and as-of labor conditions pass, otherwise twenty percent. From January 2015 through October 2, 2026, it earned {fmt(100*adaptive['net_cagr'])} percent net CAGR. Monthly sixty percent SPY and forty percent BIL earned {fmt(100*fixed['net_cagr'])} percent, with almost the same maximum drawdown. SPY earned {fmt(100*spy['net_cagr'])} percent but suffered a {fmt(abs(100*spy['max_drawdown']),1)} percent drawdown. Costs are ten basis points per dollar traded, including entry and exit. This retrospective comparison favors the simple mix. Neither alpha nor future profitability is established; revised survey and reconstructed media overlays require separate prospective validation."}
     ]
     deck.insert(5,{'title':'Provider comparison: the same economic releases',
         'layout':'wide_chart',

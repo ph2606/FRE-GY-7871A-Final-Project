@@ -18,3 +18,4 @@ nbclient
 ipykernel
 pypdf
 pytest
+exchange_calendars

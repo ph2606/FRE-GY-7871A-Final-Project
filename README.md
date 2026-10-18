@@ -2,9 +2,9 @@
 
 Panagiotis Housos | ph2606 | AI Applications in Finance | Fall 2026
 
-This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The economic information cutoff is **October 13, 2026**, America/New_York. The **October 15 revision** adds a separate provider comparison of January–September releases. Open [the executed notebook](final_project.ipynb) for the computed report and aggregate exhibits. The local deliverables are a 12-page LaTeX PDF, an interactive standalone dashboard, a standalone provider bar graph, and a ten-slide PowerPoint with approximately seven minutes of speaker notes.
+This final project studies economic narratives and University of Michigan consumer sentiment ahead of the November 3, 2026 midterms. The economic information cutoff is **October 13, 2026**, America/New_York. The **October 15 revision** adds a separate provider comparison of January–September releases, and the **October 17 extension** evaluates investment allocations. Open [the executed notebook](final_project.ipynb) for the computed report and aggregate exhibits. The local deliverables are a 12-page LaTeX PDF, an interactive standalone dashboard, a standalone provider bar graph, and a PowerPoint with speaker notes.
 
-The main conclusion is that a large gap from the three-indicator economic model is sensitive to model dynamics and survey-method controls. Persistence is a demanding benchmark. Lagged media tone provides no robust incremental forecasting evidence in the common chronological assessment. This is an observational, retrospective content analysis; no causal national media effect or investment strategy is established. Exact computed metrics are preserved in the notebook and snapshot.
+The main conclusion is that a large gap from the three-indicator economic model is sensitive to model dynamics and survey-method controls. Persistence is a demanding benchmark. Lagged media tone provides no robust incremental forecasting evidence in the common chronological assessment. A separate investment extension finds positive historical profits after modeled costs, but the tested macro timing rule underperforms a simpler SPY/BIL mix. No causal national media effect or reliable future investment alpha is established. Exact computed metrics are preserved in the notebook and snapshot.
 
 **Material assignment limitation:** the requested two independent human annotators were unavailable. Blinded 300-item human worksheets, guide, adjudication workflow and validation code are prepared. Two separate AI agents independently reviewed the same 300 items without seeing classifier outputs or each other's labels. Their diagnostic concordance is explicitly AI, and cannot satisfy the human requirement. No human accuracy, agreement or validated factual-error rate is invented.
 
@@ -40,6 +40,14 @@ The classifier has not been human-validated on the new provider sample. Truthful
 
 The primary supplement uses a documented AI title/date relevance review, plus mechanical exclusions for previews, unrelated metrics, market reactions and multi-topic roundups. Administrative branding and a leading Watch prefix are removed before scoring; raw titles are preserved. Detailed review decisions remain local at `data/annotations/provider_relevance_review.csv`. A fresh clone can acquire/score the automated candidates, but exact reproduction of this refinement requires the saved local review or a new documented review. It must not be represented as human validation or an untouched test. Sensitivities change some provider estimates and signs; the bars are not a provider-reputation ranking.
 
+## Investment comparison
+
+The October 17 extension tests a fixed macro-and-trend allocation against SPY buy-and-hold, BIL buy-and-hold and a monthly-rebalanced **60% SPY / 40% BIL** mix. The protocol preceded calculation of strategy performance, after the economic findings were known. From **January 2, 2015 through October 2, 2026**, $100 becomes **$188.01** under the timing rule, **$280.16** under the fixed mix, **$453.78** in SPY and **$125.29** in BIL. Each path pays **10 basis points per dollar bought or sold**, including entry and final liquidation; both sides of a switch incur costs. The fixed mix is the preferred research reference retrospectively, with 9.17% net CAGR and a 20.78% maximum drawdown, versus 5.52% and 20.11% for the timing rule. SPY delivers more growth with a 33.72% maximum drawdown. This comparison does not establish an optimal allocation or future profit.
+
+The primary rule holds 80% SPY when prior-month price exceeds its ten-month average and an as-of, custom three-month unemployment deterioration measure is below 0.50 percentage point; otherwise it holds 20%. The remainder is BIL, a short Treasury-bill ETF. Signals use prior completed-month prices and actual ALFRED vintages; execution is at the first joint ETF close strictly after the origin. Yahoo adjusted closes approximate split/distribution-adjusted total returns, with fractional units and reinvestment. Taxes and nonlinear market impact are omitted, and the cost rate is assumed.
+
+Secondary gap/media overlays are pseudo-real-time diagnostics over 44 origins, rather than deployable historical signals: survey targets are revised and media wording is retrospectively reconstructed using a later representation. Every gap is negative, so its overlay is a constant ten-point equity increase; raw return gains can reflect exposure. Positive historical net return does not establish alpha or promise future profitability. The provider bars never select trades. See the [protocol](docs/INVESTMENT_PROTOCOL.md) and [computed results and limitations](docs/INVESTMENT_RESULTS.md). No trades were placed.
+
 ## Reproduce
 
 Use Python 3.12. The lock records the observed Windows environment. Other platforms should resolve `requirements.txt` for their platform and record a new lock. From the project folder in PowerShell:
@@ -59,6 +67,7 @@ $projectPython = '.\.venv\Scripts\python.exe'
 # Recompute actual observations, test methods, build and execute deliverables.
 & $projectPython scripts/03_analyze.py
 & $projectPython -m src.dynamics
+& $projectPython -m src.investing all
 & $projectPython scripts/04_build_deliverables.py
 & $projectPython scripts/05_execute_notebook.py
 xelatex -interaction=nonstopmode -halt-on-error report.tex
@@ -82,13 +91,13 @@ For separately identified AI development diagnostics, use `--label-type ai_diagn
 
 ## Dashboard and prospective updates
 
-Open local `dashboard.html` for interactive date zooming, series toggles and hover values. It shows economic forecasts and uncertainty, gaps, media measures, source coverage, model errors and release events. It clearly labels unvalidated measures, incomplete October and unavailable factual accuracy. The generator is [src/dashboard.py](src/dashboard.py). No external hosting, credentials or paid services are needed.
+Open local `dashboard.html` for interactive date zooming, series toggles and hover values. Its nine charts show economic forecasts and uncertainty, gaps, provider framing, media measures, source coverage, calibration, economic inputs and investment wealth after costs. Supporting tables retain model errors and release events. It clearly labels unvalidated measures, incomplete October, unavailable factual accuracy and the limits of retrospective investment results. The generator is [src/dashboard.py](src/dashboard.py). No external hosting, credentials or paid services are needed.
 
 Future updates must preserve previous vintages, verify official calendars, use only information published by each origin, and rebuild every artifact. October 23 Michigan final and October 29 GDP/PCE releases are after this cutoff. Election proximity is context, not an identified treatment. [The causal design](docs/causal_design.md) details a prospective truthful-framing experiment, falsification and national transportability requirements; no participants were recruited.
 
 This submission intentionally freezes the October 13 snapshot. Advancing the monitoring period requires changing `CUTOFF` in `src/economics.py`, the origin range and cutoff-vintage calls in `scripts/01_collect_economics.py`, the monitoring target/preliminary-source record in `scripts/03_analyze.py`, the media acquisition `--end`, and cutoff/period descriptions in the dashboard and shared narrative. Verify and replace the preliminary record with the correctly dated official release; never carry October's 46.3 into a different month. Archive mutable Michigan/source-response caches before acquisition so the prior snapshot remains available. Then rerun the documented pipeline, validation and snapshot. Merely rerunning the frozen commands does not advance the study date.
 
-Also update `LAST_FINAL_TARGET_MONTH` only when the corresponding final survey release is available. The provider supplement's event registry/window are frozen independently. Rerunning the saved notebook checks its input hashes and stops on changed inputs; rebuild it after an intentional refresh so the narrative, calculated tables and saved figures stay consistent.
+Also update `LAST_FINAL_TARGET_MONTH` only when the corresponding final survey release is available. The provider supplement's event registry/window and the investment protocol's origin/execution dates are frozen independently. Do not extend a historical wealth chart by silently changing its evaluation window. Rerunning the saved notebook checks its input hashes and stops on changed inputs; rebuild it after an intentional refresh so the narrative, calculated tables and saved figures stay consistent.
 
 The original AI review packet has 300 titles, of which 277 survive final relevance screening. The separate final human packet retains those 277 and supplements 23 eligible titles, yielding 300 final-corpus items in independently shuffled blank forms. The original AI labels and scores remain unchanged. Human and AI evaluations therefore have explicitly different eligible pools.
 

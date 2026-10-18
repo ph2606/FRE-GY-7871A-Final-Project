@@ -18,6 +18,8 @@ ASSETS = (
     'dashboard.html',
     'Provider_Bias_Comparison.png',
     'Provider_Bias_Comparison.pdf',
+    'Investment_Strategy_Comparison.png',
+    'Investment_Strategy_Comparison.pdf',
 )
 ROOT_SOURCE = {
     '.gitattributes', '.gitignore', 'AI_USE.md', 'README.md', 'SNAPSHOT.md',
@@ -81,6 +83,7 @@ Panagiotis Housos | ph2606 | AI Applications in Finance | Fall 2026
 
 The main study is frozen at October 13, 2026 (America/New_York). The separate
 provider comparison was collected retrospectively for the October 15, 2026 revision.
+The investing extension was developed October 17, with returns ending October 2.
 These are study dates; the recorded checks below may have run later.
 
 Contents:
@@ -91,6 +94,7 @@ Contents:
   {validation['estimated_minutes_140wpm']:.1f} minutes at 140 words per minute).
 - `dashboard.html`: self-contained interactive dashboard; open in a browser.
 - `Provider_Bias_Comparison.png` and `.pdf`: standalone provider comparison figure.
+- `Investment_Strategy_Comparison.png` and `.pdf`: net wealth comparison.
 - `final_project.ipynb`: executed notebook with {validation['notebook_code_cells']}
   code cells and {validation['notebook_errors']} recorded errors.
 - {source_count} tracked source/documentation files, including the notebook,
@@ -103,6 +107,9 @@ Packaging checks file hashes and archive integrity; it does not rerun those test
 The provider figure compares {validation['provider_comparison_n']} providers over
 {validation['common_provider_events']} identical releases. Its relative negativity
 proxy uses a selected peer reference; it is not factual accuracy or ideological bias.
+The preferred monthly 60% SPY / 40% BIL allocation was chosen after comparing the
+fixed strategies. Historical profit after modeled costs does not establish media
+alpha, untouched validation, suitability for every investor, or future profit.
 
 The requirement for two independent human annotators on 300 items remains
 **unsatisfied**. AI annotation diagnostics are disclosed separately and cannot
@@ -117,7 +124,7 @@ for the workflow and `AI_USE.md` for AI assistance and limitations.
 Git HEAD at packaging: `{head}`; {state}.
 Included source is captured from the current tracked worktree, including staged
 new files; it is not asserted to equal HEAD. Untracked source is excluded.
-`SNAPSHOT.md` binds the notebook and all five generated deliverables to their hashes.
+`SNAPSHOT.md` binds the notebook and all seven generated deliverables to their hashes.
 '''.encode('utf-8')
 
 
